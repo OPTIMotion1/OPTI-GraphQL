@@ -29,7 +29,13 @@ app.get("/api/health", async (req, res) => {
 const frontendDist = path.join(__dirname, "..", "..", "frontend", "dist");
 if (require("fs").existsSync(frontendDist)) {
   app.use(express.static(frontendDist));
-  app.get("/*", (req, res) => res.sendFile(path.join(frontendDist, "index.html")));
+
+  app.use((req, res, next) => {
+    if (req.method !== "GET" || req.path.startsWith("/api/")) {
+      return next();
+    }
+    res.sendFile(path.join(frontendDist, "index.html"));
+  });
 } else {
   app.get("/", (req, res) => res.json({ success: true, message: "OPTI GraphQL Backend Running" }));
 }
