@@ -11,8 +11,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.get("/", (req, res) => res.json({ success: true, message: "OPTI GraphQL Backend Running" }));
-
 app.use("/api/assets", assetsRoutes);
 app.use("/api/command", commandRoutes);
 
@@ -31,7 +29,9 @@ app.get("/api/health", async (req, res) => {
 const frontendDist = path.join(__dirname, "..", "..", "frontend", "dist");
 if (require("fs").existsSync(frontendDist)) {
   app.use(express.static(frontendDist));
-  app.get("/{*path}", (req, res) => res.sendFile(path.join(frontendDist, "index.html")));
+  app.get("/*", (req, res) => res.sendFile(path.join(frontendDist, "index.html")));
+} else {
+  app.get("/", (req, res) => res.json({ success: true, message: "OPTI GraphQL Backend Running" }));
 }
 
 const PORT = process.env.PORT || 5001;
