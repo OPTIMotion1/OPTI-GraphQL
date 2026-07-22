@@ -24,7 +24,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial
 .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
 .topbar h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; color: #F4F6FA; }
 .topbar-right { display: flex; align-items: center; gap: 12px; }
-.last-updated { color: #5B6478; font-size: 13px; }
+.last-updated { color: #5B6478; font-size: 13px; cursor: default; }
 .refresh-btn { background: #3D7EFF; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13.5px; font-weight: 600; font-family: inherit; }
 .refresh-btn:hover:not(:disabled) { background: #5B92FF; }
 .refresh-btn:disabled { opacity: 0.5; cursor: default; }
@@ -145,6 +145,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial
 .expand-arrow { font-size: 10px; color: #5B6478; }
 .tag-mono { font-family: monospace; }
 .tag-muted { opacity: 0.5; font-style: italic; }
+.tag-bms { background: rgba(232,163,61,0.12); border-color: rgba(232,163,61,0.4); color: #E8A33D; }
+.tag-gps { background: rgba(61,126,255,0.12); border-color: rgba(61,126,255,0.4); color: #7DA5FF; }
+.bms-notice { background: rgba(232,163,61,0.08); border: 1px solid rgba(232,163,61,0.25); color: #E8A33D; font-size: 12.5px; padding: 8px 12px; border-radius: 7px; }
 
 /* ── Expanded device detail ──────────────────────────────────────────────── */
 .device-list-expanded { display: flex; flex-direction: column; gap: 12px; border-top: 1px solid #1F2530; padding-top: 12px; margin-top: 2px; }

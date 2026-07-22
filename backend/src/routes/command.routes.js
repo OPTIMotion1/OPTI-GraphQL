@@ -7,9 +7,8 @@ const { sendDeviceCommand } = require("../services/voltcred.service");
 const ALLOWED_COMMANDS = [
   "engine_cutoff",
   "engine_restore",
-  "location_request",
-  "status_query",
-  "geofence_check",
+  "request_location",
+  "location_request", // deprecated but still works
 ];
 
 // POST /api/command  { "deviceId": 284, "commandType": "engine_cutoff" }

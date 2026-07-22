@@ -1,5 +1,7 @@
 const axios = require("axios");
 
+
+
 const GRAPHQL_URL = process.env.VOLTCRED_GRAPHQL_URL
   || "https://api-stage.voltcred.com/v2/graphql";
 
@@ -97,8 +99,8 @@ async function graphqlRequest(query, variables = {}) {
 
 async function getAssets() {
   const query = `
-    query ListAssets {
-      assets(limit: 50) {
+    query ListAssets($limit: Int!, $offset: Int!) {
+      assets(limit: $limit, offset: $offset) {
         id
         name
         license_plate
@@ -120,8 +122,23 @@ async function getAssets() {
     }
   `;
 
-  const data = await graphqlRequest(query);
-  return data?.assets || [];
+  // Paginate through all assets — VoltCred may cap each page at fewer records
+  // than the total fleet size. We keep fetching until a page comes back empty.
+  const PAGE_SIZE = 50;
+  let all = [];
+  let offset = 0;
+
+  while (true) {
+    const data = await graphqlRequest(query, { limit: PAGE_SIZE, offset });
+    const page = data?.assets || [];
+    all = all.concat(page);
+    console.log(`getAssets: fetched ${page.length} assets at offset ${offset} (total so far: ${all.length})`);
+
+    if (page.length < PAGE_SIZE) break; // last page
+    offset += PAGE_SIZE;
+  }
+
+  return all;
 }
 
 // ── Send command ──────────────────────────────────────────────────────────────
@@ -134,9 +151,8 @@ async function getAssets() {
 const ALLOWED_COMMANDS = [
   "engine_cutoff",
   "engine_restore",
-  "location_request",
-  "status_query",
-  "geofence_check",
+  "request_location",
+  "location_request", // deprecated but still works — kept for backwards compat
 ];
 
 async function sendDeviceCommand(deviceId, commandType) {

@@ -95,8 +95,8 @@ async function gql(query, variables = {}) {
 
 async function getAssets() {
   const query = `
-    query ListAssets {
-      assets(limit: 50) {
+    query ListAssets($limit: Int!, $offset: Int!) {
+      assets(limit: $limit, offset: $offset) {
         id
         name
         license_plate
@@ -117,8 +117,21 @@ async function getAssets() {
       }
     }
   `;
-  const data = await gql(query);
-  return data?.assets || [];
+
+  const PAGE_SIZE = 50;
+  let all = [];
+  let offset = 0;
+
+  while (true) {
+    const data = await gql(query, { limit: PAGE_SIZE, offset });
+    const page = data?.assets || [];
+    all = all.concat(page);
+
+    if (page.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
+  }
+
+  return all;
 }
 
 // ── Send command ──────────────────────────────────────────────────────────────

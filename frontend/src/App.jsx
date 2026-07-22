@@ -15,12 +15,17 @@ const NAV_ITEMS = [
 
 // Full CommandType enum from the VoltCred Customer API Postman collection.
 const COMMAND_LABELS = {
-  engine_cutoff:    { label: "Lock",            emoji: "🔒", danger: true,  desc: "Immobilize — cut the engine" },
-  engine_restore:   { label: "Unlock",          emoji: "🔓", danger: false, desc: "Mobilize — restore the engine" },
-  location_request: { label: "Locate",          emoji: "📍", danger: false, desc: "Request a fresh GPS fix" },
-  status_query:     { label: "Check status",    emoji: "🔄", danger: false, desc: "Query current device status" },
-  geofence_check:   { label: "Geofence check",  emoji: "🛰️", danger: false, desc: "Check geofence boundary state" },
+  engine_cutoff:    { label: "Lock",   emoji: "🔒", danger: true,  desc: "Immobilize — cut the engine",   types: ["gps_generic", "gt06"] },
+  engine_restore:   { label: "Unlock", emoji: "🔓", danger: false, desc: "Mobilize — restore the engine", types: ["gps_generic", "gt06"] },
+  request_location: { label: "Locate", emoji: "📍", danger: false, desc: "Request a fresh GPS fix",       types: ["gps_generic", "gt06"] },
 };
+
+// Commands supported per device type
+function getCommandsForDevice(iotTypeCode) {
+  return Object.entries(COMMAND_LABELS).filter(([, meta]) =>
+    !meta.types || meta.types.includes(iotTypeCode)
+  );
+}
 
 const CONN_LABELS = {
   online:       { label: "Connected",    tone: "online"  },
@@ -33,6 +38,30 @@ function fmtTime(ts) {
   const d = new Date(ts.replace(" ", "T") + "Z");
   if (isNaN(d.getTime())) return ts;
   return d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+}
+
+function useRelativeTime(date) {
+  const [label, setLabel] = useState(null);
+
+  useEffect(() => {
+    if (!date) { setLabel(null); return; }
+
+    const update = () => {
+      const secs = Math.floor((Date.now() - date.getTime()) / 1000);
+      if (secs < 10)  { setLabel("just now"); return; }
+      if (secs < 60)  { setLabel(`${secs}s ago`); return; }
+      const mins = Math.floor(secs / 60);
+      if (mins < 60)  { setLabel(`${mins}m ago`); return; }
+      const hrs = Math.floor(mins / 60);
+      setLabel(`${hrs}h ago`);
+    };
+
+    update();
+    const t = setInterval(update, 15000);
+    return () => clearInterval(t);
+  }, [date]);
+
+  return label;
 }
 
 function useAssets() {
@@ -67,7 +96,7 @@ function useAssets() {
 
   useEffect(() => {
     load();
-    const t = setInterval(load, 15000);
+    const t = setInterval(load, 5 * 60 * 1000); // every 5 minutes
     return () => clearInterval(t);
   }, [load]);
 
@@ -146,10 +175,15 @@ function useFilteredAssets(assets) {
   return { query, setQuery, status, setStatus, filtered };
 }
 
-function DeviceRow({ device, onCommand, commandStatus }) {
+function DeviceRow({ device, asset, onCommand, commandStatus }) {
   const conn = CONN_LABELS[device.connection_status] || CONN_LABELS.unknown;
   const status = commandStatus[device.id];
-  const hasFix = device.last_latitude && device.last_longitude;
+  // Use device-level GPS first, fall back to asset-level location
+  const lat = device.last_latitude || asset?.location?.latitude;
+  const lng = device.last_longitude || asset?.location?.longitude;
+  const hasFix = lat && lng;
+  const isBms = device.iot_type_code === "battery_bms";
+  const availableCommands = getCommandsForDevice(device.iot_type_code);
 
   return (
     <div className="device-detail">
@@ -157,12 +191,20 @@ function DeviceRow({ device, onCommand, commandStatus }) {
         <div className="device-detail-id">
           <span className="device-name">{device.name || device.device_id}</span>
           <span className="tag tag-mono">{device.device_id}</span>
-          {device.iot_type_code && <span className="tag">{device.iot_type_code}</span>}
+          {device.iot_type_code && (
+            <span className={`tag ${isBms ? "tag-bms" : "tag-gps"}`}>{device.iot_type_code}</span>
+          )}
         </div>
         <span className={`conn-pill conn-${conn.tone}`}>
           <span className={`conn-dot dot-${conn.tone}`} /> {conn.label}
         </span>
       </div>
+
+      {isBms && (
+        <div className="bms-notice">
+          ⚡ Battery BMS sensor — engine commands (lock/unlock/locate) are not supported on this device type.
+        </div>
+      )}
 
       <div className="device-detail-grid">
         <div className="dd-field">
@@ -176,13 +218,15 @@ function DeviceRow({ device, onCommand, commandStatus }) {
         <div className="dd-field">
           <span className="dd-label">Last known position</span>
           <span className="dd-value">
-            {hasFix ? `${device.last_latitude.toFixed(5)}, ${device.last_longitude.toFixed(5)}` : "No GPS fix reported"}
+            {hasFix
+              ? `${parseFloat(lat).toFixed(5)}, ${parseFloat(lng).toFixed(5)}${!device.last_latitude ? " (asset location)" : ""}`
+              : "No GPS fix reported"}
           </span>
         </div>
       </div>
 
       <div className="device-commands-full">
-        {Object.entries(COMMAND_LABELS).map(([cmd, meta]) => (
+        {availableCommands.map(([cmd, meta]) => (
           <button
             key={cmd}
             className={`cmd-btn ${meta.danger ? "cmd-danger" : "cmd-safe"}`}
@@ -238,7 +282,7 @@ function AssetCard({ asset, onCommand, commandStatus }) {
         <div className="device-list-expanded">
           {devices.length === 0 && <p className="muted">No IoT devices attached to this asset.</p>}
           {devices.map((d) => (
-            <DeviceRow key={d.id} device={d} onCommand={onCommand} commandStatus={commandStatus} />
+            <DeviceRow key={d.id} device={d} asset={asset} onCommand={onCommand} commandStatus={commandStatus} />
           ))}
         </div>
       )}
@@ -471,7 +515,7 @@ function SettingsTab() {
       <div className="settings-row">
         <div>
           <span className="settings-label">Auto-refresh interval</span>
-          <p className="muted">Every 15 seconds</p>
+          <p className="muted">Every 5 minutes (use ↻ Refresh to fetch immediately)</p>
         </div>
       </div>
       <div className="settings-row">
@@ -489,6 +533,7 @@ export default function App() {
   const [commandStatus, setCommandStatus]   = useState({});
   const [pendingConfirm, setPendingConfirm] = useState(null);
   const { assets, loading, error, permBlocked, lastFetched, reload } = useAssets();
+  const relativeTime = useRelativeTime(lastFetched);
 
   const requestCommand = (deviceId, assetId, commandType) => {
     setPendingConfirm({ deviceId, assetId, commandType });
@@ -546,8 +591,12 @@ export default function App() {
         <div className="topbar">
           <h1>{{ dashboard: "Dashboard", vehicles: "Vehicles", commands: "Commands", settings: "Settings" }[activeTab]}</h1>
           <div className="topbar-right">
-            {lastFetched && <span className="last-updated">Updated {lastFetched.toLocaleTimeString()}</span>}
-            <button className="refresh-btn" onClick={reload} disabled={loading}>{loading ? "Loading…" : "Refresh"}</button>
+            {relativeTime && (
+              <span className="last-updated" title={lastFetched?.toLocaleTimeString()}>
+                Updated {relativeTime}
+              </span>
+            )}
+            <button className="refresh-btn" onClick={reload} disabled={loading}>{loading ? "Loading…" : "↻ Refresh"}</button>
           </div>
         </div>
 
