@@ -1,0 +1,8 @@
+# Run this command in backend folder to install security packages:
+
+npm install jsonwebtoken bcryptjs express-rate-limit
+
+# What each package does:
+# - jsonwebtoken: For JWT token generation and verification
+# - bcryptjs: For password hashing
+# - express-rate-limit: For rate limiting API calls

@@ -1,11 +1,44 @@
+# Dependencies
 node_modules/
+package-lock.json
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Build outputs
 dist/
 build/
-.vite/
-.env
-.env.*
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
 .DS_Store
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-coverage/
+Thumbs.db
+
+# Test files
+test-*.js
+test-*.ps1
+test-*.txt
+*.test.js
+
+# Data files
+data/*.json
+!data/.gitkeep
+
+# Temporary files
+*.tmp
+*.bak
+*.backup
+
+# Sensitive files
+*.pem
+*.key
+*.cert

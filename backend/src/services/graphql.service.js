@@ -138,7 +138,7 @@ async function getAssets() {
 // device_id MUST be an Int (not a string) — GraphQL schema requires Int!
 // Allowed commands: engine_cutoff (lock), engine_restore (unlock)
 
-const ALLOWED_COMMANDS = ["engine_cutoff", "engine_restore"];
+const ALLOWED_COMMANDS = ["engine_cutoff", "engine_restore", "location_request"];
 
 async function sendCommand(deviceId, commandType) {
   if (!ALLOWED_COMMANDS.includes(commandType)) {

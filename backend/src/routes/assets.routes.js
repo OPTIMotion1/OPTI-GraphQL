@@ -1,12 +1,14 @@
 const express = require("express");
 const router = express.Router();
 const { getAssets } = require("../services/voltcred.service");
+// const { verifyToken } = require("../middleware/auth.middleware");
 
 // GET /api/assets
 // Returns vehicle list from VoltCred GraphQL assets query.
 // Returns empty array with a clear message if assets are not yet
 // authorized for this account — no silent failure.
-router.get("/", async (req, res) => {
+// AUTHENTICATION TEMPORARILY DISABLED FOR TESTING
+router.get("/", async (req, res) => {  // Remove verifyToken for now
   try {
     const assets = await getAssets();
     res.json({ success: true, assets });

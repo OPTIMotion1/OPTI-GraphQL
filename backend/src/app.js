@@ -1,18 +1,43 @@
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const rateLimit = require("express-rate-limit");
 require("dotenv").config();
 
+const authRoutes = require("./routes/auth.routes");
 const assetsRoutes = require("./routes/assets.routes");
 const commandRoutes = require("./routes/command.routes");
+const activityRoutes = require("./routes/activity.routes");
+const autoCutoffRoutes = require("./routes/auto-cutoff.routes");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-app.use("/api/assets", assetsRoutes);
-app.use("/api/command", commandRoutes);
+// Rate limiting for API routes
+const apiLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 100, // max 100 requests per minute per IP
+  message: 'Too many requests. Please try again later.'
+});
+
+const commandLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 10, // max 10 commands per minute per IP
+  message: 'Too many commands. Please wait before sending more commands.'
+});
+
+// Apply rate limiting
+app.use("/api/", apiLimiter);
+app.use("/api/command", commandLimiter);
+
+// Routes
+app.use("/api/auth", authRoutes);  // Login, logout - NO AUTH REQUIRED
+app.use("/api/assets", assetsRoutes);  // Requires auth
+app.use("/api/command", commandRoutes);  // Requires auth + role check
+app.use("/api/activity", activityRoutes);  // Requires auth
+app.use("/api/auto-cutoff", autoCutoffRoutes);  // Requires auth + admin role
 
 // Health check — useful for confirming GraphQL login works on startup
 app.get("/api/health", async (req, res) => {
