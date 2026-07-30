@@ -28,7 +28,7 @@ function normalizePhoneNumber(rawPhone) {
   return digits;
 }
 
-function buildTemplatePayload({ to, sender, apiKey, campaignId, templateName, languageCode, components }) {
+function buildTemplatePayload({ to, receiverName, sender, apiKey, campaignId, templateName, languageCode, components }) {
   if (!apiKey) {
     throw new Error('GetGabs API key is not configured. Set GETGABS_API_KEY in environment.');
   }
@@ -38,14 +38,19 @@ function buildTemplatePayload({ to, sender, apiKey, campaignId, templateName, la
   if (!templateName) {
     throw new Error('GetGabs template name is not configured. Set GETGABS_TEMPLATE_NAME in environment.');
   }
+  if (!campaignId) {
+    throw new Error('GetGabs campaign ID is not configured. Set GETGABS_CAMPAIGN_ID in environment.');
+  }
 
   // GetGabs API format - EXACT format from documentation
   const payload = {
     api_key: apiKey,
     sender: sender,
+    campaign_id: campaignId,
     messaging_product: 'whatsapp',
     recipient_type: 'individual',
     to: to,
+    receiver_name: receiverName || 'Customer', // Required field
     type: 'template',
     template: {
       name: templateName,
@@ -54,12 +59,6 @@ function buildTemplatePayload({ to, sender, apiKey, campaignId, templateName, la
       }
     }
   };
-
-  // IMPORTANT: Only add campaign_id if it's actually provided and not empty
-  // GetGabs might reject empty campaign_id
-  if (campaignId && campaignId.trim() !== '' && campaignId !== 'your-campaign-id') {
-    payload.campaign_id = campaignId;
-  }
 
   // Add components if provided (for template variables)
   if (components && Array.isArray(components) && components.length > 0) {
@@ -77,6 +76,7 @@ async function sendTemplateMessage(to, options = {}) {
 
   const payload = buildTemplatePayload({
     to: normalizedTo,
+    receiverName: options.receiverName || options.riderName || 'Customer',
     sender: options.sender || GETGABS_SENDER,
     apiKey: options.apiKey || GETGABS_API_KEY,
     campaignId: options.campaignId || GETGABS_CAMPAIGN_ID,
@@ -119,6 +119,7 @@ async function sendBulkTemplateMessages(targets = [], options = {}) {
     try {
       const payload = {
         to: target.to,
+        receiverName: target.riderName || target.receiverName || 'Customer',
         sender: options.sender,
         apiKey: options.apiKey,
         campaignId: options.campaignId,
