@@ -873,6 +873,143 @@ function ActivityTab({ assets, commandStatus }) {
   );
 }
 
+// ── RIDER ACTIONS MENU COMPONENT ─────────────────────────────────────────────
+function RiderActionsMenu({ rental, onAction }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isOpen]);
+
+  return (
+    <div style={{ position: 'relative', display: 'inline-block' }} ref={menuRef}>
+      <button 
+        className="cmd-btn" 
+        style={{ 
+          fontSize: 12, 
+          padding: '6px 12px', 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 4,
+          background: 'var(--primary)',
+          color: 'white',
+          border: 'none'
+        }}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        Actions {isOpen ? '▲' : '▼'}
+      </button>
+      
+      {isOpen && (
+        <div style={{
+          position: 'absolute',
+          top: '100%',
+          right: 0,
+          marginTop: 4,
+          background: 'var(--bg2)',
+          border: '1px solid var(--border2)',
+          borderRadius: 8,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          minWidth: 180,
+          zIndex: 1000,
+          overflow: 'hidden'
+        }}>
+          <button
+            onClick={() => {
+              setIsOpen(false);
+              onAction('lock');
+            }}
+            style={{
+              width: '100%',
+              padding: '10px 14px',
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--text)',
+              fontSize: 13,
+              textAlign: 'left',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              transition: 'background 0.15s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg4)'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+          >
+            <span>🔒</span>
+            <span>Lock Vehicle</span>
+          </button>
+          
+          <button
+            onClick={() => {
+              setIsOpen(false);
+              onAction('notify');
+            }}
+            style={{
+              width: '100%',
+              padding: '10px 14px',
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--text)',
+              fontSize: 13,
+              textAlign: 'left',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              borderTop: '1px solid var(--border)',
+              transition: 'background 0.15s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg4)'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+          >
+            <span>📱</span>
+            <span>Send Notification</span>
+          </button>
+          
+          <button
+            onClick={() => {
+              setIsOpen(false);
+              onAction('lock_and_notify');
+            }}
+            style={{
+              width: '100%',
+              padding: '10px 14px',
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--text)',
+              fontSize: 13,
+              textAlign: 'left',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              borderTop: '1px solid var(--border)',
+              transition: 'background 0.15s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg4)'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+          >
+            <span>🔒📱</span>
+            <span style={{ fontWeight: 600 }}>Lock & Notify</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── AUTO-CUTOFF TAB ──────────────────────────────────────────────────────────
 function AutoCutoffTab({ authenticatedFetch, user }) {
   const [loading, setLoading] = useState(false);
@@ -1327,36 +1464,80 @@ function AutoCutoffTab({ authenticatedFetch, user }) {
                             {totalDue ? `₹${totalDue}` : '—'}
                           </td>
                           <td style={{ padding: '8px 10px' }}>
-                            <div style={{ display: 'flex', gap: 4 }}>
-                              {isAdmin && (
-                                <>
-                                  <button 
-                                    className="cmd-btn cmd-danger" 
-                                    style={{ fontSize: 11, padding: '4px 8px' }}
-                                    onClick={() => {
-                                      if(confirm(`Lock vehicle ${r.vehicleId}?`)) {
-                                        alert(`🔒 Lock sent to ${r.vehicleId}`);
+                            {isAdmin && (
+                              <RiderActionsMenu 
+                                rental={r}
+                                onAction={async (action) => {
+                                  if (action === 'lock') {
+                                    if (confirm(`Lock vehicle ${r.vehicleId}?`)) {
+                                      try {
+                                        const res = await authenticatedFetch('/api/auto-cutoff/lock-individual', {
+                                          method: 'POST',
+                                          body: JSON.stringify({
+                                            rentalId: r.rentalId,
+                                            vehicleId: r.vehicleId,
+                                            autoNotify: false
+                                          })
+                                        });
+                                        const data = await res.json();
+                                        if (data.success) {
+                                          alert(`✅ Vehicle locked successfully!`);
+                                          fetchStats();
+                                          fetchLogs();
+                                        } else {
+                                          alert(`❌ Lock failed: ${data.error || 'Unknown error'}`);
+                                        }
+                                      } catch (err) {
+                                        alert(`❌ Error: ${err.message}`);
                                       }
-                                    }}
-                                    title="Lock vehicle"
-                                  >
-                                    🔒
-                                  </button>
-                                  <button 
-                                    className="cmd-btn" 
-                                    style={{ fontSize: 11, padding: '4px 8px', background: 'var(--orange)', color: 'white', border: 'none' }}
-                                    onClick={() => {
-                                      if(confirm(`Hold ${r.rentalId}?`)) {
-                                        alert(`⏸️ Held`);
+                                    }
+                                  } else if (action === 'notify') {
+                                    if (confirm(`Send WhatsApp notification to ${r.riderName}?`)) {
+                                      try {
+                                        const res = await authenticatedFetch('/api/auto-cutoff/notify', {
+                                          method: 'POST',
+                                          body: JSON.stringify({
+                                            rentalIds: [r.rentalId]
+                                          })
+                                        });
+                                        const data = await res.json();
+                                        if (data.success && data.successCount > 0) {
+                                          alert(`✅ Notification sent to ${r.riderName}!`);
+                                        } else {
+                                          alert(`❌ Notification failed: ${data.error || 'Unknown error'}`);
+                                        }
+                                      } catch (err) {
+                                        alert(`❌ Error: ${err.message}`);
                                       }
-                                    }}
-                                    title="Hold auto-lock"
-                                  >
-                                    ⏸️
-                                  </button>
-                                </>
-                              )}
-                            </div>
+                                    }
+                                  } else if (action === 'lock_and_notify') {
+                                    if (confirm(`Lock vehicle ${r.vehicleId} and send WhatsApp notification to ${r.riderName}?`)) {
+                                      try {
+                                        const res = await authenticatedFetch('/api/auto-cutoff/lock-individual', {
+                                          method: 'POST',
+                                          body: JSON.stringify({
+                                            rentalId: r.rentalId,
+                                            vehicleId: r.vehicleId,
+                                            autoNotify: true
+                                          })
+                                        });
+                                        const data = await res.json();
+                                        if (data.success) {
+                                          const notifyStatus = data.notification?.success ? '✅ Notified' : '⚠️ Lock OK, notification failed';
+                                          alert(`✅ Vehicle locked!\n${notifyStatus}`);
+                                          fetchStats();
+                                          fetchLogs();
+                                        } else {
+                                          alert(`❌ Lock failed: ${data.error || 'Unknown error'}`);
+                                        }
+                                      } catch (err) {
+                                        alert(`❌ Error: ${err.message}`);
+                                      }
+                                    }
+                                  }
+                                }}
+                              />
+                            )}
                           </td>
                         </tr>
                       );
