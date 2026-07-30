@@ -888,6 +888,7 @@ function AutoCutoffTab({ authenticatedFetch, user }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedRiders, setSelectedRiders] = useState([]);
   const [showOnlyOverdue, setShowOnlyOverdue] = useState(false);  // NEW: Toggle to show all or overdue only
+  const [autoNotify, setAutoNotify] = useState(true);  // NEW: Auto-send WhatsApp notifications on lock
   const ridersPerPage = 10;
 
   // Fetch stats and logs on mount
@@ -964,7 +965,8 @@ function AutoCutoffTab({ authenticatedFetch, user }) {
       return;
     }
 
-    if (!confirm(`Execute auto-cutoff for ${overdueRentals.length} rentals that are ${minOverdueDays}+ days overdue?`)) {
+    const notifyMsg = autoNotify ? ' and send WhatsApp notifications' : '';
+    if (!confirm(`Execute auto-cutoff for ${overdueRentals.length} rentals that are ${minOverdueDays}+ days overdue${notifyMsg}?`)) {
       return;
     }
 
@@ -974,10 +976,18 @@ function AutoCutoffTab({ authenticatedFetch, user }) {
     try {
       const res = await authenticatedFetch('/api/auto-cutoff/check-and-execute', {
         method: 'POST',
-        body: JSON.stringify({ minOverdueDays }),
+        body: JSON.stringify({ 
+          minOverdueDays,
+          autoNotify 
+        }),
       });
       const data = await res.json();
       setResult(data);
+      
+      // Show notification results if auto-notify was enabled
+      if (autoNotify && data.notifications) {
+        alert(`✅ Cutoff completed!\n\nLocked: ${data.successful}\nNotifications sent: ${data.notifications.sent}/${data.notifications.total}`);
+      }
       
       // Refresh stats and logs after execution
       await fetchStats();
@@ -1171,13 +1181,22 @@ function AutoCutoffTab({ authenticatedFetch, user }) {
                 >
                   📱 Notify All ({selectedRiders.length || (showOnlyOverdue ? overdueRentals.length : allRentals.length)})
                 </button>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text)', cursor: 'pointer', userSelect: 'none' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={autoNotify} 
+                    onChange={(e) => setAutoNotify(e.target.checked)}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <span>Auto-notify on lock</span>
+                </label>
                 <button 
                   className="refresh-btn" 
                   onClick={executeAutoCutoff} 
                   disabled={loading}
                   style={{ background: loading ? 'var(--text4)' : '#DC2626' }}
                 >
-                  {loading ? '⏳ Executing...' : '🔒 Lock All'}
+                  {loading ? '⏳ Executing...' : `🔒 Lock All${autoNotify ? ' & Notify' : ''}`}
                 </button>
               </>
             )}

@@ -7,7 +7,7 @@ const {
   resetCutoffStatus 
 } = require('../services/cutoff-tracker.service');
 const { getOverdueRentals, getAllRentals } = require('../services/renewals.service');
-const { sendBulkTemplateMessages } = require('../services/getgabs.service');
+const { sendBulkTemplateMessages, sendTemplateMessage } = require('../services/getgabs.service');
 const { verifyToken, isAdmin } = require('../middleware/auth.middleware');
 
 // ============================================================================
@@ -16,11 +16,61 @@ const { verifyToken, isAdmin } = require('../middleware/auth.middleware');
 // ============================================================================
 router.post('/check-and-execute', verifyToken, isAdmin, async (req, res) => {
   try {
-    const { minOverdueDays = 1 } = req.body;
+    const { minOverdueDays = 1, autoNotify = false } = req.body;
     
     console.log(`[Auto-Cutoff] Initiated by ${req.user.name} (${req.user.role})`);
+    console.log(`[Auto-Cutoff] Auto-notify enabled: ${autoNotify}`);
     
     const result = await checkAndExecuteAutoCutoff(minOverdueDays);
+    
+    // If autoNotify is enabled and we have successful cutoffs, send notifications
+    if (autoNotify && result.successful > 0) {
+      console.log(`[Auto-Cutoff] Auto-notify: Sending notifications to ${result.successful} riders`);
+      
+      try {
+        const successfulRentals = result.details.filter(d => d.status === 'locked');
+        const targets = successfulRentals
+          .filter(rental => rental.riderPhone)
+          .map(rental => ({
+            rentalId: rental.rentalId,
+            to: rental.riderPhone,
+            riderName: rental.riderName || 'Rider',
+            components: [
+              {
+                type: 'BODY',
+                parameters: [
+                  { 
+                    type: 'text', 
+                    text: rental.riderName || 'Rider'
+                  }
+                ]
+              }
+            ]
+          }));
+        
+        if (targets.length > 0) {
+          const notifyResults = await sendBulkTemplateMessages(targets, {
+            apiKey: process.env.GETGABS_API_KEY,
+            sender: process.env.GETGABS_SENDER,
+            campaignId: process.env.GETGABS_CAMPAIGN_ID,
+            templateName: process.env.GETGABS_TEMPLATE_NAME,
+            languageCode: process.env.GETGABS_TEMPLATE_LANGUAGE,
+          });
+          
+          const notifySuccess = notifyResults.filter(r => r.success).length;
+          console.log(`[Auto-Cutoff] Auto-notify: Sent ${notifySuccess}/${targets.length} notifications`);
+          
+          result.notifications = {
+            sent: notifySuccess,
+            failed: targets.length - notifySuccess,
+            total: targets.length
+          };
+        }
+      } catch (notifyError) {
+        console.error('[Auto-Cutoff] Auto-notify error:', notifyError);
+        result.notificationError = notifyError.message;
+      }
+    }
     
     res.json(result);
   } catch (error) {
@@ -270,6 +320,98 @@ router.get('/all-rentals', verifyToken, isAdmin, async (req, res) => {
       success: false,
       error: error.message,
       stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+});
+
+// ============================================================================
+// POST /api/auto-cutoff/lock-individual
+// Lock individual rider and optionally send WhatsApp notification
+// ============================================================================
+router.post('/lock-individual', verifyToken, isAdmin, async (req, res) => {
+  try {
+    const { rentalId, vehicleId, autoNotify = false } = req.body;
+    
+    if (!rentalId || !vehicleId) {
+      return res.status(400).json({
+        success: false,
+        error: 'rentalId and vehicleId are required'
+      });
+    }
+    
+    console.log(`[Auto-Cutoff] Individual lock requested for rental ${rentalId}, vehicle ${vehicleId}`);
+    console.log(`[Auto-Cutoff] Auto-notify: ${autoNotify}`);
+    
+    // Get rental details
+    const allRentals = await getAllRentals();
+    const rental = allRentals.find(r => r.rentalId === rentalId);
+    
+    if (!rental) {
+      return res.status(404).json({
+        success: false,
+        error: `Rental ${rentalId} not found`
+      });
+    }
+    
+    // Execute cutoff for this specific rental
+    const { executeSingleCutoff } = require('../services/auto-cutoff.service');
+    const cutoffResult = await executeSingleCutoff(rental);
+    
+    let notificationResult = null;
+    
+    // If autoNotify is enabled and cutoff was successful, send notification
+    if (autoNotify && cutoffResult.success && rental.riderPhone) {
+      console.log(`[Auto-Cutoff] Sending notification to ${rental.riderName} at ${rental.riderPhone}`);
+      
+      try {
+        const notifyResult = await sendTemplateMessage(rental.riderPhone, {
+          receiverName: rental.riderName || 'Rider',
+          riderName: rental.riderName || 'Rider',
+          components: [
+            {
+              type: 'BODY',
+              parameters: [
+                { 
+                  type: 'text', 
+                  text: rental.riderName || 'Rider'
+                }
+              ]
+            }
+          ]
+        });
+        
+        notificationResult = {
+          success: true,
+          messageId: notifyResult.messages?.[0]?.id,
+          status: notifyResult.messages?.[0]?.message_status
+        };
+        
+        console.log(`[Auto-Cutoff] Notification sent successfully`);
+      } catch (notifyError) {
+        console.error('[Auto-Cutoff] Notification error:', notifyError);
+        notificationResult = {
+          success: false,
+          error: notifyError.message
+        };
+      }
+    }
+    
+    res.json({
+      success: cutoffResult.success,
+      rentalId,
+      vehicleId,
+      riderName: rental.riderName,
+      riderPhone: rental.riderPhone,
+      cutoff: cutoffResult,
+      notification: notificationResult,
+      autoNotifyEnabled: autoNotify
+    });
+    
+  } catch (error) {
+    console.error('[Auto-Cutoff] Error locking individual:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
     });
   }
 });

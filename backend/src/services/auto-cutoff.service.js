@@ -292,9 +292,47 @@ async function checkAndExecuteAutoCutoff(minOverdueDays = 1) {
   }
 }
 
+/**
+ * Execute cutoff for a single specific rental (by ID)
+ * @param {Object} rental - Rental data
+ * @returns {Promise<Object>} Result of cutoff attempt
+ */
+async function executeSingleCutoff(rental) {
+  const startTime = Date.now();
+  
+  console.log(`Executing cutoff for rental ${rental.rentalId}, vehicle ${rental.vehicleId}`);
+  
+  try {
+    // Fetch VoltCred assets
+    const assets = await getAssets();
+    
+    if (!assets || assets.length === 0) {
+      throw new Error('No VoltCred assets available');
+    }
+    
+    // Execute cutoff for this rental
+    const result = await executeCutoffForRental(rental, assets);
+    result.duration = Date.now() - startTime;
+    
+    return result;
+    
+  } catch (error) {
+    console.error(`Error in executeSingleCutoff for rental ${rental.rentalId}:`, error);
+    
+    return {
+      rentalId: rental.rentalId,
+      vehicleId: rental.vehicleId,
+      success: false,
+      error: error.message,
+      duration: Date.now() - startTime
+    };
+  }
+}
+
 module.exports = {
   matchRentalToDevice,
   checkSafetyConditions,
   executeCutoffForRental,
-  checkAndExecuteAutoCutoff
+  checkAndExecuteAutoCutoff,
+  executeSingleCutoff
 };
