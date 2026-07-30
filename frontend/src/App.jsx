@@ -895,20 +895,25 @@ function RiderActionsMenu({ rental, onAction }) {
   return (
     <div style={{ position: 'relative', display: 'inline-block' }} ref={menuRef}>
       <button 
-        className="cmd-btn" 
+        onClick={() => setIsOpen(!isOpen)}
         style={{ 
           fontSize: 12, 
           padding: '6px 12px', 
           display: 'flex', 
           alignItems: 'center', 
           gap: 4,
-          background: 'var(--primary)',
-          color: 'white',
-          border: 'none'
+          background: '#3B82F6',
+          color: '#FFFFFF',
+          border: 'none',
+          borderRadius: 6,
+          cursor: 'pointer',
+          fontWeight: 500,
+          transition: 'background 0.2s'
         }}
-        onClick={() => setIsOpen(!isOpen)}
+        onMouseEnter={(e) => e.currentTarget.style.background = '#2563EB'}
+        onMouseLeave={(e) => e.currentTarget.style.background = '#3B82F6'}
       >
-        Actions {isOpen ? '▲' : '▼'}
+        <span style={{ color: '#FFFFFF' }}>Actions</span> {isOpen ? '▲' : '▼'}
       </button>
       
       {isOpen && (
