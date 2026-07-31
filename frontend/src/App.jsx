@@ -1655,7 +1655,13 @@ function BulkNotifyTab({ authenticatedFetch }) {
   const [csvFile, setCsvFile] = useState(null);
   const [csvData, setCsvData] = useState(null);
   const [template, setTemplate] = useState('rent_reminder_dashboard');
-  const [columnMapping, setColumnMapping] = useState({ name: 'person_name', phone: 'phone', var1: 'person_name', var2: 'rent' });
+  const [columnMapping, setColumnMapping] = useState({ 
+    name: 'person_name', 
+    phone: 'phone', 
+    var1: 'person_name', 
+    var2: 'rent',
+    var3: 'discounted_amount'  // New third variable
+  });
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState(null);
 
@@ -1717,11 +1723,27 @@ function BulkNotifyTab({ authenticatedFetch }) {
     
     try {
       // Map CSV data to recipients format
-      const recipients = csvData.data.map(row => ({
-        phone: row[columnMapping.phone],
-        name: row[columnMapping.name],
-        variables: [row[columnMapping.var1], row[columnMapping.var2]]
-      }));
+      const recipients = csvData.data.map(row => {
+        // Calculate discounted amount if needed
+        let var3Value = row[columnMapping.var3];
+        
+        // If var3 column doesn't exist or is empty, calculate it
+        if (!var3Value || var3Value === '') {
+          const rent = parseFloat(row[columnMapping.var2] || 0);
+          const discount = parseFloat(row['t1_discount'] || row['discount'] || 0);
+          var3Value = String(rent - discount);
+        }
+        
+        return {
+          phone: row[columnMapping.phone],
+          name: row[columnMapping.name],
+          variables: [
+            row[columnMapping.var1], 
+            row[columnMapping.var2],
+            var3Value  // Third variable (calculated if needed)
+          ]
+        };
+      });
 
       const response = await authenticatedFetch(`${API_BASE}/api/bulk-notify/send`, {
         method: 'POST',
@@ -1795,7 +1817,7 @@ function BulkNotifyTab({ authenticatedFetch }) {
                 width: '100%'
               }}
             >
-              <option value="rent_reminder_dashboard">Rent Reminder (2 variables)</option>
+              <option value="rent_reminder_dashboard">Rent Reminder (3 variables: Name, Amount, Discounted Amount)</option>
               <option value="overdue_rental_cutoff">Overdue Cutoff Warning (1 variable)</option>
             </select>
           </div>
@@ -1861,10 +1883,28 @@ function BulkNotifyTab({ authenticatedFetch }) {
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: 5, fontSize: 13, color: 'var(--text2)' }}>Variable 2 (Vehicle Rent):</label>
+                <label style={{ display: 'block', marginBottom: 5, fontSize: 13, color: 'var(--text2)' }}>Variable 2 (Regular Rent Amount):</label>
                 <select 
                   value={columnMapping.var2}
                   onChange={(e) => setColumnMapping({...columnMapping, var2: e.target.value})}
+                  style={{ 
+                    padding: 8, 
+                    borderRadius: 6, 
+                    border: '1px solid var(--border)',
+                    background: 'var(--bg2)',
+                    color: 'var(--text1)',
+                    width: '100%'
+                  }}
+                >
+                  {csvData.columns.map(col => <option key={col} value={col}>{col}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: 5, fontSize: 13, color: 'var(--text2)' }}>Variable 3 (Discounted Amount):</label>
+                <select 
+                  value={columnMapping.var3}
+                  onChange={(e) => setColumnMapping({...columnMapping, var3: e.target.value})}
                   style={{ 
                     padding: 8, 
                     borderRadius: 6, 
@@ -1889,8 +1929,9 @@ function BulkNotifyTab({ authenticatedFetch }) {
                   <tr style={{ borderBottom: '2px solid var(--border)' }}>
                     <th style={{ padding: 10, textAlign: 'left', color: 'var(--text3)' }}>Phone</th>
                     <th style={{ padding: 10, textAlign: 'left', color: 'var(--text3)' }}>Name</th>
-                    <th style={{ padding: 10, textAlign: 'left', color: 'var(--text3)' }}>Variable 1</th>
-                    <th style={{ padding: 10, textAlign: 'left', color: 'var(--text3)' }}>Variable 2</th>
+                    <th style={{ padding: 10, textAlign: 'left', color: 'var(--text3)' }}>Var 1 (Name)</th>
+                    <th style={{ padding: 10, textAlign: 'left', color: 'var(--text3)' }}>Var 2 (Rent)</th>
+                    <th style={{ padding: 10, textAlign: 'left', color: 'var(--text3)' }}>Var 3 (Discounted)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1900,6 +1941,7 @@ function BulkNotifyTab({ authenticatedFetch }) {
                       <td style={{ padding: 10 }}>{row[columnMapping.name]}</td>
                       <td style={{ padding: 10 }}>{row[columnMapping.var1]}</td>
                       <td style={{ padding: 10 }}>{row[columnMapping.var2]}</td>
+                      <td style={{ padding: 10 }}>{row[columnMapping.var3]}</td>
                     </tr>
                   ))}
                 </tbody>
