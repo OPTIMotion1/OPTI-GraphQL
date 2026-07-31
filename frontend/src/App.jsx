@@ -17,6 +17,7 @@ const NAV_ITEMS = [
   { key: "vehicles",  label: "🚗 Vehicles"  },
   { key: "commands",  label: "⚡ Commands"  },
   { key: "autocutoff", label: "🤖 Auto-Cutoff" },
+  { key: "bulknotify", label: "📤 Bulk Notify" },
   { key: "activity",  label: "📋 Activity"  },
   { key: "settings",  label: "⚙️ Settings"  },
 ];
@@ -1649,6 +1650,266 @@ function AutoCutoffTab({ authenticatedFetch, user }) {
   );
 }
 
+// ── BULK NOTIFY TAB ──────────────────────────────────────────────────────────
+function BulkNotifyTab({ authenticatedFetch }) {
+  const [csvFile, setCsvFile] = useState(null);
+  const [csvData, setCsvData] = useState(null);
+  const [template, setTemplate] = useState('rent_reminder_dashboard');
+  const [columnMapping, setColumnMapping] = useState({ name: 'person_name', phone: 'phone', var1: 'person_name', var2: 'rent' });
+  const [sending, setSending] = useState(false);
+  const [progress, setProgress] = useState(null);
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('csvFile', file);
+
+    try {
+      const response = await authenticatedFetch(`${API_BASE}/api/bulk-notify/upload`, {
+        method: 'POST',
+        body: formData,
+        headers: {}, // Let browser set Content-Type with boundary
+      });
+
+      setCsvData(response);
+      setCsvFile(file.name);
+    } catch (error) {
+      alert('Error uploading CSV: ' + error.message);
+    }
+  };
+
+  const handleSend = async () => {
+    if (!csvData || !csvData.data) {
+      alert('Please upload a CSV file first');
+      return;
+    }
+
+    if (!window.confirm(`Send WhatsApp messages to ${csvData.totalRows} recipients?`)) {
+      return;
+    }
+
+    setSending(true);
+    
+    try {
+      // Map CSV data to recipients format
+      const recipients = csvData.data.map(row => ({
+        phone: row[columnMapping.phone],
+        name: row[columnMapping.name],
+        variables: [row[columnMapping.var1], row[columnMapping.var2]]
+      }));
+
+      const response = await authenticatedFetch(`${API_BASE}/api/bulk-notify/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipients,
+          template: {
+            name: template,
+            campaignId: '23073'
+          },
+          rateLimit: 5  // 5 messages per second
+        }),
+      });
+
+      alert(`✅ Bulk send started! Job ID: ${response.jobId}\nCheck Activity tab for status.`);
+      
+      // Reset
+      setCsvFile(null);
+      setCsvData(null);
+      setSending(false);
+
+    } catch (error) {
+      alert('Error sending: ' + error.message);
+      setSending(false);
+    }
+  };
+
+  return (
+    <div style={{ padding: 30, maxWidth: 1200, margin: '0 auto' }}>
+      <h2 style={{ marginBottom: 10, fontSize: 24, fontWeight: 600 }}>📤 Bulk WhatsApp Notifications</h2>
+      <p style={{ color: 'var(--text2)', marginBottom: 30 }}>Upload a CSV file to send template messages to multiple recipients</p>
+
+      {/* Step 1: Upload CSV */}
+      <div style={{ background: 'var(--bg3)', padding: 25, borderRadius: 12, marginBottom: 20 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 15 }}>1️⃣ Upload CSV File</h3>
+        <input 
+          type="file" 
+          accept=".csv" 
+          onChange={handleFileUpload}
+          style={{ 
+            padding: 10, 
+            borderRadius: 8, 
+            border: '2px dashed var(--border)',
+            background: 'var(--bg2)',
+            color: 'var(--text1)',
+            cursor: 'pointer',
+            width: '100%'
+          }}
+        />
+        {csvFile && (
+          <p style={{ marginTop: 10, color: 'var(--success)', fontSize: 14 }}>
+            ✅ Loaded: {csvFile} ({csvData?.totalRows} rows)
+          </p>
+        )}
+      </div>
+
+      {/* Step 2: Template Selection */}
+      {csvData && (
+        <>
+          <div style={{ background: 'var(--bg3)', padding: 25, borderRadius: 12, marginBottom: 20 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 15 }}>2️⃣ Select Template</h3>
+            <select 
+              value={template}
+              onChange={(e) => setTemplate(e.target.value)}
+              style={{ 
+                padding: 10, 
+                borderRadius: 8, 
+                border: '1px solid var(--border)',
+                background: 'var(--bg2)',
+                color: 'var(--text1)',
+                width: '100%'
+              }}
+            >
+              <option value="rent_reminder_dashboard">Rent Reminder (2 variables)</option>
+              <option value="overdue_rental_cutoff">Overdue Cutoff Warning (1 variable)</option>
+            </select>
+          </div>
+
+          {/* Step 3: Column Mapping */}
+          <div style={{ background: 'var(--bg3)', padding: 25, borderRadius: 12, marginBottom: 20 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 15 }}>3️⃣ Map CSV Columns</h3>
+            <p style={{ color: 'var(--text3)', fontSize: 13, marginBottom: 15 }}>Available columns: {csvData.columns.join(', ')}</p>
+            
+            <div style={{ display: 'grid', gap: 15 }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: 5, fontSize: 13, color: 'var(--text2)' }}>Phone Number Column:</label>
+                <select 
+                  value={columnMapping.phone}
+                  onChange={(e) => setColumnMapping({...columnMapping, phone: e.target.value})}
+                  style={{ 
+                    padding: 8, 
+                    borderRadius: 6, 
+                    border: '1px solid var(--border)',
+                    background: 'var(--bg2)',
+                    color: 'var(--text1)',
+                    width: '100%'
+                  }}
+                >
+                  {csvData.columns.map(col => <option key={col} value={col}>{col}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: 5, fontSize: 13, color: 'var(--text2)' }}>Recipient Name Column:</label>
+                <select 
+                  value={columnMapping.name}
+                  onChange={(e) => setColumnMapping({...columnMapping, name: e.target.value})}
+                  style={{ 
+                    padding: 8, 
+                    borderRadius: 6, 
+                    border: '1px solid var(--border)',
+                    background: 'var(--bg2)',
+                    color: 'var(--text1)',
+                    width: '100%'
+                  }}
+                >
+                  {csvData.columns.map(col => <option key={col} value={col}>{col}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: 5, fontSize: 13, color: 'var(--text2)' }}>Variable 1 (Customer Name):</label>
+                <select 
+                  value={columnMapping.var1}
+                  onChange={(e) => setColumnMapping({...columnMapping, var1: e.target.value})}
+                  style={{ 
+                    padding: 8, 
+                    borderRadius: 6, 
+                    border: '1px solid var(--border)',
+                    background: 'var(--bg2)',
+                    color: 'var(--text1)',
+                    width: '100%'
+                  }}
+                >
+                  {csvData.columns.map(col => <option key={col} value={col}>{col}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: 5, fontSize: 13, color: 'var(--text2)' }}>Variable 2 (Vehicle Rent):</label>
+                <select 
+                  value={columnMapping.var2}
+                  onChange={(e) => setColumnMapping({...columnMapping, var2: e.target.value})}
+                  style={{ 
+                    padding: 8, 
+                    borderRadius: 6, 
+                    border: '1px solid var(--border)',
+                    background: 'var(--bg2)',
+                    color: 'var(--text1)',
+                    width: '100%'
+                  }}
+                >
+                  {csvData.columns.map(col => <option key={col} value={col}>{col}</option>)}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Step 4: Preview */}
+          <div style={{ background: 'var(--bg3)', padding: 25, borderRadius: 12, marginBottom: 20 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 15 }}>4️⃣ Preview (First 3 rows)</h3>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid var(--border)' }}>
+                    <th style={{ padding: 10, textAlign: 'left', color: 'var(--text3)' }}>Phone</th>
+                    <th style={{ padding: 10, textAlign: 'left', color: 'var(--text3)' }}>Name</th>
+                    <th style={{ padding: 10, textAlign: 'left', color: 'var(--text3)' }}>Variable 1</th>
+                    <th style={{ padding: 10, textAlign: 'left', color: 'var(--text3)' }}>Variable 2</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {csvData.preview.slice(0, 3).map((row, i) => (
+                    <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: 10 }}>{row[columnMapping.phone]}</td>
+                      <td style={{ padding: 10 }}>{row[columnMapping.name]}</td>
+                      <td style={{ padding: 10 }}>{row[columnMapping.var1]}</td>
+                      <td style={{ padding: 10 }}>{row[columnMapping.var2]}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Step 5: Send */}
+          <div style={{ textAlign: 'center' }}>
+            <button 
+              onClick={handleSend}
+              disabled={sending}
+              style={{ 
+                padding: '15px 40px', 
+                borderRadius: 10, 
+                border: 'none',
+                background: sending ? 'var(--text3)' : 'var(--success)',
+                color: '#FFFFFF',
+                fontSize: 16,
+                fontWeight: 600,
+                cursor: sending ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              {sending ? '⏳ Sending...' : `📤 Send to ${csvData.totalRows} Recipients`}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── ROOT APP ─────────────────────────────────────────────────────────────────
 export default function App() {
   const { isAuthenticated, loading: authLoading, user, logout } = useAuth();
@@ -1792,6 +2053,7 @@ export default function App() {
         {activeTab === "vehicles"  && <VehiclesTab  assets={assets} permBlocked={permBlocked} loading={loading} onCommand={requestCommand} commandStatus={commandStatus} lockState={lockState} />}
         {activeTab === "commands"  && <CommandsTab  assets={assets} authenticatedFetch={authenticatedFetch} />}
         {activeTab === "autocutoff" && <AutoCutoffTab authenticatedFetch={authenticatedFetch} user={user} />}
+        {activeTab === "bulknotify" && <BulkNotifyTab authenticatedFetch={authenticatedFetch} />}
         {activeTab === "activity"  && <ActivityTab  assets={assets} commandStatus={commandStatus} />}
         {activeTab === "settings"  && <SettingsTab  dark={dark} setDark={setDark} />}
       </main>

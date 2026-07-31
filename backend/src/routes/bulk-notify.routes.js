@@ -1,0 +1,138 @@
+const express = require('express');
+const router = express.Router();
+const multer = require('multer');
+const csv = require('csv-parser');
+const fs = require('fs');
+const path = require('path');
+const { sendBulkNotifications } = require('../services/bulk-notify.service');
+
+// Configure multer for CSV upload
+const upload = multer({
+  dest: 'uploads/',
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'text/csv' || file.originalname.endsWith('.csv')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only CSV files are allowed'));
+    }
+  },
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB max
+  }
+});
+
+// POST /api/bulk-notify/upload - Parse CSV and return preview
+router.post('/upload', upload.single('csvFile'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'No CSV file uploaded' });
+    }
+
+    const results = [];
+    const filePath = req.file.path;
+
+    // Parse CSV
+    fs.createReadStream(filePath)
+      .pipe(csv())
+      .on('data', (data) => results.push(data))
+      .on('end', () => {
+        // Clean up uploaded file
+        fs.unlinkSync(filePath);
+
+        // Return parsed data and preview
+        res.json({
+          success: true,
+          totalRows: results.length,
+          columns: Object.keys(results[0] || {}),
+          preview: results.slice(0, 5), // First 5 rows for preview
+          data: results // Full data for processing
+        });
+      })
+      .on('error', (error) => {
+        fs.unlinkSync(filePath);
+        res.status(500).json({ success: false, error: error.message });
+      });
+
+  } catch (error) {
+    console.error('Error uploading CSV:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/bulk-notify/send - Send bulk notifications
+router.post('/send', async (req, res) => {
+  try {
+    const { 
+      recipients,  // Array of { phone, name, variables }
+      template,    // Template config
+      rateLimit    // Messages per second (default: 5)
+    } = req.body;
+
+    if (!recipients || !Array.isArray(recipients) || recipients.length === 0) {
+      return res.status(400).json({ success: false, error: 'Recipients array is required' });
+    }
+
+    if (!template || !template.name) {
+      return res.status(400).json({ success: false, error: 'Template name is required' });
+    }
+
+    // Start bulk sending (non-blocking)
+    const jobId = Date.now().toString();
+    
+    // Send in background
+    sendBulkNotifications(jobId, recipients, template, rateLimit || 5)
+      .catch(err => console.error('Bulk send error:', err));
+
+    res.json({
+      success: true,
+      jobId,
+      message: `Started sending ${recipients.length} notifications`,
+      totalRecipients: recipients.length
+    });
+
+  } catch (error) {
+    console.error('Error starting bulk send:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/bulk-notify/status/:jobId - Get bulk send status
+router.get('/status/:jobId', (req, res) => {
+  const { jobId } = req.params;
+  
+  // Get status from in-memory store or database
+  const status = global.bulkNotifyJobs?.[jobId];
+  
+  if (!status) {
+    return res.status(404).json({ success: false, error: 'Job not found' });
+  }
+
+  res.json({
+    success: true,
+    ...status
+  });
+});
+
+// GET /api/bulk-notify/templates - Get available templates
+router.get('/templates', (req, res) => {
+  // Return available GetGabs templates
+  res.json({
+    success: true,
+    templates: [
+      {
+        name: 'rent_reminder_dashboard',
+        displayName: 'Rent Reminder',
+        variables: ['Customer Name', 'Vehicle Rent'],
+        campaignId: '23073'
+      },
+      {
+        name: 'overdue_rental_cutoff',
+        displayName: 'Overdue Cutoff Warning',
+        variables: ['Rider Name'],
+        campaignId: '23073'
+      }
+    ]
+  });
+});
+
+module.exports = router;

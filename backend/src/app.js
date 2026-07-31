@@ -9,6 +9,7 @@ const assetsRoutes = require("./routes/assets.routes");
 const commandRoutes = require("./routes/command.routes");
 const activityRoutes = require("./routes/activity.routes");
 const autoCutoffRoutes = require("./routes/auto-cutoff.routes");
+const bulkNotifyRoutes = require("./routes/bulk-notify.routes");
 
 const app = express();
 
@@ -38,6 +39,7 @@ app.use("/api/assets", assetsRoutes);  // Requires auth
 app.use("/api/command", commandRoutes);  // Requires auth + role check
 app.use("/api/activity", activityRoutes);  // Requires auth
 app.use("/api/auto-cutoff", autoCutoffRoutes);  // Requires auth + admin role
+app.use("/api/bulk-notify", bulkNotifyRoutes);  // Bulk WhatsApp notifications
 
 // Health check — useful for confirming GraphQL login works on startup
 app.get("/api/health", async (req, res) => {

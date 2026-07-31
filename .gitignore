@@ -38,6 +38,9 @@ data/*.json
 *.bak
 *.backup
 
+# Uploads
+uploads/
+
 # Sensitive files
 *.pem
 *.key
