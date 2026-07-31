@@ -6,9 +6,15 @@ const fs = require('fs');
 const path = require('path');
 const { sendBulkNotifications } = require('../services/bulk-notify.service');
 
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, '..', '..', 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
 // Configure multer for CSV upload
 const upload = multer({
-  dest: 'uploads/',
+  dest: uploadsDir,
   fileFilter: (req, file, cb) => {
     if (file.mimetype === 'text/csv' || file.originalname.endsWith('.csv')) {
       cb(null, true);
@@ -39,17 +45,28 @@ router.post('/upload', upload.single('csvFile'), async (req, res) => {
         // Clean up uploaded file
         fs.unlinkSync(filePath);
 
+        if (results.length === 0) {
+          return res.status(400).json({ success: false, error: 'CSV file is empty' });
+        }
+
+        const columns = Object.keys(results[0] || {});
+        if (columns.length === 0) {
+          return res.status(400).json({ success: false, error: 'CSV has no columns' });
+        }
+
         // Return parsed data and preview
         res.json({
           success: true,
           totalRows: results.length,
-          columns: Object.keys(results[0] || {}),
+          columns: columns,
           preview: results.slice(0, 5), // First 5 rows for preview
           data: results // Full data for processing
         });
       })
       .on('error', (error) => {
-        fs.unlinkSync(filePath);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
         res.status(500).json({ success: false, error: error.message });
       });
 

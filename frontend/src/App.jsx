@@ -1673,10 +1673,21 @@ function BulkNotifyTab({ authenticatedFetch }) {
         headers: {}, // Let browser set Content-Type with boundary
       });
 
+      if (!response || !response.success) {
+        throw new Error(response?.error || 'Failed to upload CSV');
+      }
+
+      if (!response.columns || !Array.isArray(response.columns)) {
+        throw new Error('Invalid CSV format - no columns found');
+      }
+
       setCsvData(response);
       setCsvFile(file.name);
     } catch (error) {
+      console.error('CSV Upload Error:', error);
       alert('Error uploading CSV: ' + error.message);
+      setCsvData(null);
+      setCsvFile(null);
     }
   };
 
