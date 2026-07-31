@@ -1292,7 +1292,7 @@ function AutoCutoffTab({ authenticatedFetch, user }) {
                 }}
                 style={{ padding: '6px 10px', background: 'var(--bg4)', border: '1px solid var(--border3)', borderRadius: 6, color: 'var(--text)', fontSize: 13 }}
               >
-                <option value="all">All Riders (257)</option>
+                <option value="all">All Riders ({allRentals.length})</option>
                 <option value="overdue">Overdue Only ({overdueRentals.length})</option>
               </select>
             </div>
@@ -1324,22 +1324,13 @@ function AutoCutoffTab({ authenticatedFetch, user }) {
                 >
                   📱 Notify All ({selectedRiders.length || (showOnlyOverdue ? overdueRentals.length : allRentals.length)})
                 </button>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text)', cursor: 'pointer', userSelect: 'none' }}>
-                  <input 
-                    type="checkbox" 
-                    checked={autoNotify} 
-                    onChange={(e) => setAutoNotify(e.target.checked)}
-                    style={{ cursor: 'pointer' }}
-                  />
-                  <span>Auto-notify on lock</span>
-                </label>
                 <button 
                   className="refresh-btn" 
                   onClick={executeAutoCutoff} 
                   disabled={loading}
                   style={{ background: loading ? 'var(--text4)' : '#DC2626' }}
                 >
-                  {loading ? '⏳ Executing...' : `🔒 Lock All${autoNotify ? ' & Notify' : ''}`}
+                  {loading ? '⏳ Executing...' : '🔒 Lock All'}
                 </button>
               </>
             )}
@@ -1958,12 +1949,13 @@ function BulkNotifyTab({ authenticatedFetch }) {
                 padding: '15px 40px', 
                 borderRadius: 10, 
                 border: 'none',
-                background: sending ? 'var(--text3)' : 'var(--success)',
+                background: sending ? 'var(--text3)' : '#22C55E',
                 color: '#FFFFFF',
                 fontSize: 16,
                 fontWeight: 600,
                 cursor: sending ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s'
+                transition: 'all 0.2s',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
               }}
             >
               {sending ? '⏳ Sending...' : `📤 Send to ${csvData.totalRows} Recipients`}
