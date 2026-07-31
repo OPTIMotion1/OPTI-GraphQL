@@ -16,9 +16,17 @@ if (!fs.existsSync(uploadsDir)) {
 const upload = multer({
   dest: uploadsDir,
   fileFilter: (req, file, cb) => {
-    if (file.mimetype === 'text/csv' || file.originalname.endsWith('.csv')) {
+    console.log('[Bulk Notify] Uploaded file:', file.originalname, 'MIME:', file.mimetype);
+    
+    // Accept CSV files (be lenient with MIME type)
+    if (file.mimetype === 'text/csv' || 
+        file.mimetype === 'application/vnd.ms-excel' ||
+        file.mimetype === 'application/csv' ||
+        file.mimetype === 'text/plain' ||
+        file.originalname.endsWith('.csv')) {
       cb(null, true);
     } else {
+      console.log('[Bulk Notify] Rejected file - invalid type');
       cb(new Error('Only CSV files are allowed'));
     }
   },

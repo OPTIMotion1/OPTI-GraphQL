@@ -1667,22 +1667,34 @@ function BulkNotifyTab({ authenticatedFetch }) {
     formData.append('csvFile', file);
 
     try {
-      const response = await authenticatedFetch(`${API_BASE}/api/bulk-notify/upload`, {
+      // Get token manually for file upload (authenticatedFetch adds wrong Content-Type header)
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch(`${API_BASE}/api/bulk-notify/upload`, {
         method: 'POST',
         body: formData,
-        headers: {}, // Let browser set Content-Type with boundary
+        headers: {
+          'Authorization': `Bearer ${token}`
+          // Don't set Content-Type - browser will set it with boundary
+        }
       });
 
-      if (!response || !response.success) {
-        throw new Error(response?.error || 'Failed to upload CSV');
+      const data = await response.json();
+      
+      console.log('Upload response status:', response.status);
+      console.log('Upload response data:', data);
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || `Server error: ${response.status}`);
       }
 
-      if (!response.columns || !Array.isArray(response.columns)) {
+      if (!data.columns || !Array.isArray(data.columns)) {
         throw new Error('Invalid CSV format - no columns found');
       }
 
-      setCsvData(response);
+      setCsvData(data);
       setCsvFile(file.name);
+      alert(`✅ CSV uploaded successfully! ${data.totalRows} rows found.`);
     } catch (error) {
       console.error('CSV Upload Error:', error);
       alert('Error uploading CSV: ' + error.message);

@@ -1,0 +1,82 @@
+========================================
+PROOF: VoltCred DOES Return "status" Field
+========================================
+
+Dear VoltCred Team,
+
+You mentioned that you don't expose a "status" field in your API.
+However, our testing shows that you DO return this field.
+
+Here is the proof with exact curl commands and responses:
+
+
+========================================
+STEP 1: Login
+========================================
+
+curl -X POST https://api.voltcred.com/v2/graphql \
+  -H "Content-Type: application/json" \
+  -H "Cookie: device=web" \
+  -d "{\"query\":\"mutation Login(\$email: String!, \$password: String!) { sessionCreateV2(data: { email: \$email, password: \$password }) { token success messageKey } }\",\"variables\":{\"email\":\"hello@optimotion.in\",\"password\":\"Hello@1234\"}}"
+
+RESPONSE:
+{
+  "data": {
+    "sessionCreateV2": {
+      "token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcHAiOiJ2b2x0Y3JlZCIsImRldmljZSI6IndlYiIsImVtYWlsIjoiaGVsbG9Ab3B0aW1vdGlvbi5pbiIsImV4cCI6MTc4NTUwNjIyNSwiZXh0ZXJuYWxfaWQiOiI5NSIsImlhdCI6MTc4NTQxOTgyNSwiaXNzIjoiaGVpbWRhbGxyIiwib3JnX2lkIjoxODMsInJ4cCI6MTc4NTU5MjYyNSwic3ViIjoiOTg5NzgzIiwidXNlcl9pZCI6OTg5NzgzfQ.mvbGJ-i8dKG4m48Q8O88IMWgvHNL90jAcYQ60f9_-oV0IPC4CsN4478iGogMkwtmAFO_Uo7q98fqVApDKiVHlo_ac2ymIXL43XehmNNP9StE258lxOt9oFb2RI1BSlZExiy4g0GdrEUp9uG_0v3lU0lYv8N3uVGoRLirmDza1mZNibIAgbZ3k53TzJ9EV_i3ANUi4-UncYVqBwjM3zvx-nvQlN68I0OaZOXJDicK66KI20QE4w_ne_X4V6hiwDlWTT-JLPFy1GBhWTWukpBZRpQNfyxPbuhZoF3cOUdHR0f8oUkdq1kqh8KpEbKKAr3ONwvdZuC-JpjV21zALNDElmHLqgZxya-brgu9LRPajiI4O8_lY20H-jLUUBYecMkGyO5t1e9jF6o1Yz2ZdDSAPJvYmOVTy3ZiF4otekhBcfNMPmPYD011gyNOyNvWvFIOgCRBplggJs0d34dHtBvWKv6MJ5l3QfW1xtQAccK5o7AZzUjdRsQeUhAg722eRP0quiYVnLwHvo9fU6rrY3ONhGrQxXdAUQ1NFoK_qdSDoGPCiA3Qex4FVB04K784ROeGO3twY959nqLkOLX0MGJOUV8gx-_t5KJBui1qWCGRmZa_6nOqs-jU7rRdM-yK7Rrw8PzTkTziW-WbttKL3XLSKsAtdvtTJ2a-iX4zncAFC7U",
+      "success": true,
+      "messageKey": "session.login.success"
+    }
+  }
+}
+
+
+========================================
+STEP 2: Send Command (Querying "status")
+========================================
+
+curl -X POST https://api.voltcred.com/v2/graphql \
+  -H "Content-Type: application/json" \
+  -H "Cookie: authorization=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcHAiOiJ2b2x0Y3JlZCIsImRldmljZSI6IndlYiIsImVtYWlsIjoiaGVsbG9Ab3B0aW1vdGlvbi5pbiIsImV4cCI6MTc4NTUwNjIyNSwiZXh0ZXJuYWxfaWQiOiI5NSIsImlhdCI6MTc4NTQxOTgyNSwiaXNzIjoiaGVpbWRhbGxyIiwib3JnX2lkIjoxODMsInJ4cCI6MTc4NTU5MjYyNSwic3ViIjoiOTg5NzgzIiwidXNlcl9pZCI6OTg5NzgzfQ.mvbGJ-i8dKG4m48Q8O88IMWgvHNL90jAcYQ60f9_-oV0IPC4CsN4478iGogMkwtmAFO_Uo7q98fqVApDKiVHlo_ac2ymIXL43XehmNNP9StE258lxOt9oFb2RI1BSlZExiy4g0GdrEUp9uG_0v3lU0lYv8N3uVGoRLirmDza1mZNibIAgbZ3k53TzJ9EV_i3ANUi4-UncYVqBwjM3zvx-nvQlN68I0OaZOXJDicK66KI20QE4w_ne_X4V6hiwDlWTT-JLPFy1GBhWTWukpBZRpQNfyxPbuhZoF3cOUdHR0f8oUkdq1kqh8KpEbKKAr3ONwvdZuC-JpjV21zALNDElmHLqgZxya-brgu9LRPajiI4O8_lY20H-jLUUBYecMkGyO5t1e9jF6o1Yz2ZdDSAPJvYmOVTy3ZiF4otekhBcfNMPmPYD011gyNOyNvWvFIOgCRBplggJs0d34dHtBvWKv6MJ5l3QfW1xtQAccK5o7AZzUjdRsQeUhAg722eRP0quiYVnLwHvo9fU6rrY3ONhGrQxXdAUQ1NFoK_qdSDoGPCiA3Qex4FVB04K784ROeGO3twY959nqLkOLX0MGJOUV8gx-_t5KJBui1qWCGRmZa_6nOqs-jU7rRdM-yK7Rrw8PzTkTziW-WbttKL3XLSKsAtdvtTJ2a-iX4zncAFC7U; device=web" \
+  -d "{\"query\":\"mutation SendCommand(\$deviceId: Int!, \$command: CommandType!) { executeDeviceCommand(device_id: \$deviceId, command_type: \$command) { id command_code status execution_time } }\",\"variables\":{\"deviceId\":306,\"command\":\"location_request\"}}"
+
+RESPONSE:
+{
+  "data": {
+    "executeDeviceCommand": {
+      "id": "133",
+      "command_code": "request_location",
+      "status": "pending",           ← THIS IS THE FIELD IN QUESTION
+      "execution_time": "2026-07-30T13:57:06"
+    }
+  }
+}
+
+
+========================================
+CONCLUSION
+========================================
+
+✅ The GraphQL query requested: { id command_code status execution_time }
+✅ Your API successfully returned: "status": "pending"
+✅ No GraphQL errors were returned
+✅ This proves the "status" field DOES exist in your schema
+
+The field is clearly present in the executeDeviceCommand response.
+
+Please verify this on your end and let us know if there's any confusion.
+
+Best regards,
+Optimotion Team
+
+
+========================================
+FILE LOCATION (FOR REFERENCE)
+========================================
+
+This proof is located at:
+C:\Users\ABCOM\Downloads\opti-graphql\opti-graphql\backend\SEND-TO-VOLTCRED.txt
+
+You can also run our test script to verify:
+cd C:\Users\ABCOM\Downloads\opti-graphql\opti-graphql\backend
+node test-voltcred-direct.js

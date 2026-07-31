@@ -1,0 +1,80 @@
+========================================
+VOLTCRED STATUS FIELD PROOF - CURL COMMANDS
+========================================
+
+Copy and paste these commands in PowerShell one by one.
+
+
+STEP 1: Login to VoltCred
+----------------------------------------
+
+curl -X POST https://api.voltcred.com/v2/graphql `
+  -H "Content-Type: application/json" `
+  -H "Cookie: device=web" `
+  -d '{\"query\":\"mutation Login($email: String!, $password: String!) { sessionCreateV2(data: { email: $email, password: $password }) { token success messageKey } }\",\"variables\":{\"email\":\"hello@optimotion.in\",\"password\":\"Hello@1234\"}}'
+
+
+EXPECTED RESPONSE:
+{
+  "data": {
+    "sessionCreateV2": {
+      "token": "eyJhbGciOiJSUzI1NiIsInR5cCI6Ik...",
+      "success": true,
+      "messageKey": "login_successful"
+    }
+  }
+}
+
+⚠️ COPY THE TOKEN FROM THE RESPONSE ABOVE!
+
+
+STEP 2: Send Command WITH "status" field
+----------------------------------------
+⚠️ Replace YOUR_TOKEN_HERE with the token from Step 1
+
+curl -X POST https://api.voltcred.com/v2/graphql `
+  -H "Content-Type: application/json" `
+  -H "Cookie: authorization=YOUR_TOKEN_HERE; device=web" `
+  -d '{\"query\":\"mutation SendCommand($deviceId: Int!, $command: CommandType!) { executeDeviceCommand(device_id: $deviceId, command_type: $command) { id command_code status execution_time } }\",\"variables\":{\"deviceId\":306,\"command\":\"location_request\"}}'
+
+
+EXPECTED RESPONSE:
+{
+  "data": {
+    "executeDeviceCommand": {
+      "id": "133",
+      "command_code": "request_location",
+      "status": "pending",           ← THIS IS THE PROOF!
+      "execution_time": "2026-07-30T13:53:24"
+    }
+  }
+}
+
+
+========================================
+PROOF EXPLANATION
+========================================
+
+✅ The response shows "status": "pending"
+✅ This proves VoltCred DOES expose the "status" field
+✅ Their claim that they don't expose it is incorrect
+
+Show them this response!
+
+
+========================================
+ALTERNATIVE: Use our test script
+========================================
+
+If curl doesn't work, run our Node.js test:
+
+cd C:\Users\ABCOM\Downloads\opti-graphql\opti-graphql\backend
+node test-voltcred-direct.js
+
+This script already proved it works - we got:
+{
+  "id": "131",
+  "command_code": "engine_cutoff",
+  "status": "pending",
+  "execution_time": "2026-07-30T13:53:24"
+}
