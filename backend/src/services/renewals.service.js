@@ -36,18 +36,20 @@ function extractRenewalRecords(payload) {
 
   if (!payload || typeof payload !== 'object') return [];
 
+  // Optimotion API returns: { success: true, data: { data: [...] } }
+  if (payload.data?.data && Array.isArray(payload.data.data)) {
+    return payload.data.data;
+  }
+
   const candidates = [
     payload.renewals,
     payload.data?.renewals,
     payload.data?.bookings,
+    payload.data,  // Try data directly
     payload.bookings,
     payload.items,
     payload.result,
     payload.data?.items,
-    payload.data?.data,
-    payload.data?.data?.data,
-    payload.data?.data?.renewals,
-    payload.data?.data?.bookings,
     payload.records
   ];
 
@@ -150,33 +152,72 @@ async function tryLoginVariants() {
 }
 
 /**
- * Login to Optimotion Dashboard API
- * @returns {Promise<string>} Session token
+ * Login to Optimotion API
+ * @returns {Promise<{accessToken: string, refreshToken: string}>} Access and refresh tokens
  */
 async function loginToRenewalsAPI() {
   if (!RENEWALS_API_USERNAME || !RENEWALS_API_PASSWORD) {
     console.warn('Renewals API credentials not configured');
-    return null;
+    return { accessToken: null, refreshToken: null };
   }
 
   try {
-    const result = await tryLoginVariants();
-    if (result.token) {
-      sessionToken = result.token;
-      sessionCookie = result.cookie;
-      console.log('Successfully logged in to Renewals API');
-      return sessionToken;
+    console.log('[loginToRenewalsAPI] Logging in to Optimotion API...');
+    
+    // Use correct Optimotion API endpoint with +91 prefix
+    const phone = RENEWALS_API_USERNAME.startsWith('+91') 
+      ? RENEWALS_API_USERNAME 
+      : `+91${RENEWALS_API_USERNAME}`;
+    
+    const response = await axios.post('https://api.optimotion.in/api/v1/customer/login', {
+      phone,
+      password: RENEWALS_API_PASSWORD
+    }, {
+      headers: buildAuthHeaders(),
+      timeout: 30000,
+      validateStatus: () => true
+    });
+
+    if (response.status !== 200) {
+      throw new Error(`Login failed with status ${response.status}: ${JSON.stringify(response.data)}`);
     }
 
-    if (result.cookie) {
-      sessionCookie = result.cookie;
-      console.log('Successfully authenticated to Renewals API via session cookie');
-      return null;
+    const accessToken = response.data?.accessToken || response.data?.access_token || response.data?.token;
+    const refreshToken = response.data?.refreshToken || response.data?.refresh_token;
+    
+    // Also extract from cookies if present
+    const setCookie = response.headers['set-cookie'];
+    let cookieAccessToken = null;
+    let cookieRefreshToken = null;
+    
+    if (setCookie) {
+      setCookie.forEach(cookie => {
+        if (cookie.includes('access_token=')) {
+          cookieAccessToken = cookie.split('access_token=')[1].split(';')[0];
+        }
+        if (cookie.includes('refresh_token=')) {
+          cookieRefreshToken = cookie.split('refresh_token=')[1].split(';')[0];
+        }
+      });
     }
 
-    throw new Error('No token or session cookie received from renewals API login');
+    const finalAccessToken = accessToken || cookieAccessToken;
+    const finalRefreshToken = refreshToken || cookieRefreshToken;
+
+    if (!finalAccessToken) {
+      throw new Error('No access token received from Optimotion API login');
+    }
+
+    // Update cache
+    sessionToken = finalAccessToken;
+    sessionCookie = finalRefreshToken 
+      ? `refresh_token=${finalRefreshToken}; access_token=${finalAccessToken}`
+      : `access_token=${finalAccessToken}`;
+    
+    console.log('[loginToRenewalsAPI] Successfully logged in to Optimotion API');
+    return { accessToken: finalAccessToken, refreshToken: finalRefreshToken };
   } catch (error) {
-    console.error('Error logging in to Renewals API:', error.message);
+    console.error('[loginToRenewalsAPI] Error:', error.message);
     throw new Error(`Renewals API login failed: ${error.message}`);
   }
 }
@@ -305,17 +346,28 @@ function filterOverdueRentals(renewals, minOverdueDays = 1) {
 
   return renewals
     .map(rental => {
-      // Flexible field mapping - adjust based on actual API response
-      const dueDate = rental.dueDate || rental.due_date || rental.endDate || rental.end_date || rental.planEndDate || rental.plan_end_date;
-      const rentalId = rental.id || rental.rentalId || rental.rental_id || rental.bookingId || rental.booking_id;
+      // Optimotion API field mapping:
+      // - bookingId: Booking/rental ID
+      // - planEndDate: Due date
+      // - riderUID: Phone number (with +91)
+      // - riderName: Customer name
+      // - vehicleId: Vehicle registration number
+      // - hub: Location/hub
+      // - totalDue: Amount due
+      
+      const dueDate = rental.planEndDate || rental.dueDate || rental.due_date || rental.endDate || rental.end_date;
+      const rentalId = rental.bookingId || rental.id || rental.rentalId || rental.rental_id || rental.booking_id;
       const vehicleId = rental.vehicleId || rental.vehicle_id || rental.assetId || rental.asset_id || rental.vehicleNumber || rental.vehicle_number;
       const vehicleImei = rental.imei || rental.deviceId || rental.device_id || rental.vehicleImei || rental.vehicle_imei || rental.deviceImei || rental.device_imei;
-      const status = rental.status || rental.rentalStatus || rental.rental_status || rental.bookingStatus || rental.booking_status || 'unknown';
+      const status = rental.status || rental.rentalStatus || rental.rental_status || rental.bookingStatus || rental.booking_status || 'active';
       
-      // Extract rider information with multiple fallback fields
+      // Extract rider information - Optimotion uses riderUID and riderName
       const riderName = rental.riderName || rental.rider_name || rental.customerName || rental.customer_name || rental.userName || rental.user_name || rental.name || rental.fullName || rental.full_name;
       const riderPhone = rental.riderUID || rental.rider_uid || rental.riderPhone || rental.rider_phone || rental.customerPhone || rental.customer_phone || rental.phone || rental.mobile || rental.mobileNumber || rental.mobile_number || rental.phoneNumber || rental.phone_number || rental.contact || rental.contactNumber || rental.contact_number;
       const riderEmail = rental.riderEmail || rental.rider_email || rental.customerEmail || rental.customer_email || rental.email;
+      const vehicleName = rental.vehicleId || rental.vehicle_id;  // Use vehicleId as name
+      const hub = rental.hub || rental.location;
+      const totalDue = rental.totalDue || rental.total_due || rental.amountDue || rental.amount_due;
 
       if (!dueDate) {
         console.warn(`Rental ${rentalId} has no due date, skipping`);
@@ -326,12 +378,14 @@ function filterOverdueRentals(renewals, minOverdueDays = 1) {
 
       // Debug: Log first rental to see field names
       if (renewals.indexOf(rental) === 0) {
-        console.log('Sample rental data:', JSON.stringify(rental, null, 2));
+        console.log('[filterOverdueRentals] Sample rental data:', JSON.stringify(rental, null, 2));
       }
 
       return {
         rentalId,
+        bookingId: rentalId,  // Alias for compatibility
         vehicleId,
+        vehicleName,
         vehicleImei,
         dueDate,
         status,
@@ -339,6 +393,8 @@ function filterOverdueRentals(renewals, minOverdueDays = 1) {
         riderName,
         riderPhone,
         riderEmail,
+        hub,
+        totalDue,
         originalData: rental // Keep original data for reference
       };
     })
@@ -385,7 +441,8 @@ async function getAllRentals() {
     
     const mapped = renewals.map((rental, index) => {
       try {
-        const dueDate = rental.dueDate || rental.due_date || rental.endDate || rental.end_date || rental.planEndDate || rental.plan_end_date;
+        // Optimotion API field mapping
+        const dueDate = rental.planEndDate || rental.dueDate || rental.due_date || rental.endDate || rental.end_date;
         const rentalId = rental.bookingId || rental.id || rental.rentalId || rental.rental_id || rental.booking_id;
         const vehicleId = rental.vehicleId || rental.vehicle_id || rental.assetId || rental.asset_id || rental.vehicleNumber || rental.vehicle_number;
         const vehicleImei = rental.imei || rental.deviceId || rental.device_id || rental.vehicleImei || rental.vehicle_imei || rental.deviceImei || rental.device_imei;
@@ -394,12 +451,17 @@ async function getAllRentals() {
         const riderName = rental.riderName || rental.rider_name || rental.customerName || rental.customer_name || rental.userName || rental.user_name || rental.name || rental.fullName || rental.full_name;
         const riderPhone = rental.riderUID || rental.rider_uid || rental.riderPhone || rental.rider_phone || rental.customerPhone || rental.customer_phone || rental.phone || rental.mobile || rental.mobileNumber || rental.mobile_number || rental.phoneNumber || rental.phone_number || rental.contact || rental.contactNumber || rental.contact_number;
         const riderEmail = rental.riderEmail || rental.rider_email || rental.customerEmail || rental.customer_email || rental.email;
+        const vehicleName = rental.vehicleId || rental.vehicle_id;
+        const hub = rental.hub || rental.location;
+        const totalDue = rental.totalDue || rental.total_due || rental.amountDue || rental.amount_due;
 
         const overdueDays = dueDate ? calculateOverdueDays(dueDate) : 0;
 
         return {
           rentalId,
+          bookingId: rentalId,
           vehicleId,
+          vehicleName,
           vehicleImei,
           dueDate,
           status,
@@ -407,6 +469,8 @@ async function getAllRentals() {
           riderName,
           riderPhone,
           riderEmail,
+          hub,
+          totalDue,
           originalData: rental
         };
       } catch (mapError) {
