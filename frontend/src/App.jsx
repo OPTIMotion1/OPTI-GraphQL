@@ -1715,23 +1715,20 @@ function BulkNotifyTab({ authenticatedFetch }) {
     try {
       // Map CSV data to recipients format
       const recipients = csvData.data.map(row => {
-        // Calculate discounted amount if needed
-        let var3Value = row[columnMapping.var3];
+        // Calculate discounted amount
+        const rent = parseFloat(row[columnMapping.var2] || 0);
+        const discount = parseFloat(row[columnMapping.var3] || 0);
         
-        // If var3 column doesn't exist or is empty, calculate it
-        if (!var3Value || var3Value === '') {
-          const rent = parseFloat(row[columnMapping.var2] || 0);
-          const discount = parseFloat(row['t1_discount'] || row['discount'] || 0);
-          var3Value = String(rent - discount);
-        }
+        // Always calculate: final amount = rent - discount
+        const var3Value = String(rent - discount);
         
         return {
           phone: row[columnMapping.phone],
           name: row[columnMapping.name],
           variables: [
-            row[columnMapping.var1], 
-            row[columnMapping.var2],
-            var3Value  // Third variable (calculated if needed)
+            row[columnMapping.var1],  // Customer name
+            row[columnMapping.var2],  // Regular rent amount
+            var3Value                 // Calculated discounted amount
           ]
         };
       });
@@ -1743,7 +1740,7 @@ function BulkNotifyTab({ authenticatedFetch }) {
           recipients,
           template: {
             name: template,
-            campaignId: '23073'
+            campaignId: template === 'rent_reminder_dashboard' ? '23213' : '23215'
           },
           rateLimit: 5  // 5 messages per second
         }),
@@ -1926,15 +1923,24 @@ function BulkNotifyTab({ authenticatedFetch }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {csvData.preview.slice(0, 3).map((row, i) => (
-                    <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: 10 }}>{row[columnMapping.phone]}</td>
-                      <td style={{ padding: 10 }}>{row[columnMapping.name]}</td>
-                      <td style={{ padding: 10 }}>{row[columnMapping.var1]}</td>
-                      <td style={{ padding: 10 }}>{row[columnMapping.var2]}</td>
-                      <td style={{ padding: 10 }}>{row[columnMapping.var3]}</td>
-                    </tr>
-                  ))}
+                  {csvData.preview.slice(0, 3).map((row, i) => {
+                    // Calculate discounted amount for preview
+                    const rent = parseFloat(row[columnMapping.var2] || 0);
+                    const discount = parseFloat(row[columnMapping.var3] || 0);
+                    const discountedAmount = rent - discount;
+                    
+                    return (
+                      <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
+                        <td style={{ padding: 10 }}>{row[columnMapping.phone]}</td>
+                        <td style={{ padding: 10 }}>{row[columnMapping.name]}</td>
+                        <td style={{ padding: 10 }}>{row[columnMapping.var1]}</td>
+                        <td style={{ padding: 10 }}>{row[columnMapping.var2]}</td>
+                        <td style={{ padding: 10, fontWeight: 600, color: 'var(--success)' }}>
+                          {discountedAmount} <span style={{ fontSize: 11, color: 'var(--text3)' }}>({row[columnMapping.var2]} - {row[columnMapping.var3]})</span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

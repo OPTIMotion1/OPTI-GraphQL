@@ -148,13 +148,13 @@ router.get('/templates', (req, res) => {
         name: 'rent_reminder_dashboard',
         displayName: 'Rent Reminder',
         variables: ['Customer Name', 'Vehicle Rent'],
-        campaignId: '23073'
+        campaignId: '23213'
       },
       {
         name: 'overdue_rental_cutoff',
         displayName: 'Overdue Cutoff Warning',
         variables: ['Rider Name'],
-        campaignId: '23073'
+        campaignId: '23215'
       }
     ]
   });
