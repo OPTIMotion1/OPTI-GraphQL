@@ -31,8 +31,8 @@ router.post("/", async (req, res) => {
   try {
     const result = await sendDeviceCommand(deviceId, commandType);
     
-    // Activity logging disabled for now
-    // logCommand(req.user, { id: vehicleId, name: vehicleName || deviceId }, commandType, result);
+    // Log command activity
+    logCommand(req.user, { id: vehicleId, name: vehicleName || deviceId }, commandType, result);
     
     res.json({
       success: true,
@@ -43,8 +43,8 @@ router.post("/", async (req, res) => {
   } catch (error) {
     console.log("ERROR sending command:", error.message);
     
-    // Activity logging disabled for now
-    // logCommand(req.user, { id: vehicleId, name: vehicleName || deviceId }, commandType, null);
+    // Log failed command
+    logCommand(req.user, { id: vehicleId, name: vehicleName || deviceId }, commandType, null);
     
     res.status(500).json({ success: false, error: error.message });
   }
