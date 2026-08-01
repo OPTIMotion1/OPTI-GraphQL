@@ -401,20 +401,22 @@ function filterOverdueRentals(renewals, minOverdueDays = 1) {
     .filter(rental => {
       if (rental === null) return false;
       
-      // Filter logic (NEGATIVE values = overdue):
-      // - If minOverdueDays is 0: Show ALL overdue (overdueDays < 0)
-      // - If minOverdueDays is negative (e.g., -7): Show ONLY that exact overdue value
+      // Filter logic:
+      // overdueDays < 0 = overdue (e.g., -7 = 7 days overdue)
+      // overdueDays = 0 = due today
+      // overdueDays > 0 = days remaining (e.g., +1 = due tomorrow)
       
+      // Special case: Show ALL overdue when minOverdueDays < 0 and exact match not needed
       if (minOverdueDays === 0) {
-        // Show ALL overdue rentals (any negative value)
+        // Filter = 0: Show ALL overdue (overdueDays < 0)
         return rental.overdueDays < 0;
-      } else if (minOverdueDays < 0) {
-        // Show ONLY rentals with exactly this overdue value
-        return rental.overdueDays === minOverdueDays;
-      } else {
-        // Positive values: show overdue <= -threshold (e.g., 7 = show -7 and worse)
-        return rental.overdueDays <= -minOverdueDays;
       }
+      
+      // Exact match for specific values (including 0 and positive)
+      // Filter = -7: Show exactly -7 days overdue
+      // Filter = 0 (when coming from frontend with exact flag): Show due today (0)
+      // Filter = 1: Show due tomorrow (+1)
+      return rental.overdueDays === minOverdueDays;
     });
 }
 

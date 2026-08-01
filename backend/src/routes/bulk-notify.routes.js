@@ -145,8 +145,14 @@ router.get('/templates', (req, res) => {
     success: true,
     templates: [
       {
+        name: 'rent_due_today_t0',
+        displayName: 'Rent Due Today (T0)',
+        variables: ['Customer Name', 'Rent Amount'],
+        campaignId: '23224'
+      },
+      {
         name: 'rent_reminder_dashboard',
-        displayName: 'Rent Reminder',
+        displayName: 'Rent Reminder (Tomorrow)',
         variables: ['Customer Name', 'Vehicle Rent'],
         campaignId: '23213'
       },

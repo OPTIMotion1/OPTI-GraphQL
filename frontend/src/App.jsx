@@ -1740,7 +1740,8 @@ function BulkNotifyTab({ authenticatedFetch }) {
           recipients,
           template: {
             name: template,
-            campaignId: template === 'rent_reminder_dashboard' ? '23213' : '23215'
+            campaignId: template === 'rent_due_today_t0' ? '23224' : 
+                       template === 'rent_reminder_dashboard' ? '23213' : '23215'
           },
           rateLimit: 5  // 5 messages per second
         }),
@@ -1805,7 +1806,8 @@ function BulkNotifyTab({ authenticatedFetch }) {
                 width: '100%'
               }}
             >
-              <option value="rent_reminder_dashboard">Rent Reminder (3 variables: Name, Amount, Discounted Amount)</option>
+              <option value="rent_due_today_t0">Rent Due Today - T0 (2 variables)</option>
+              <option value="rent_reminder_dashboard">Rent Reminder - Tomorrow (3 variables)</option>
               <option value="overdue_rental_cutoff">Overdue Cutoff Warning (1 variable)</option>
             </select>
           </div>
