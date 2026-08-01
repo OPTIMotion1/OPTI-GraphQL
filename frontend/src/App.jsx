@@ -1026,7 +1026,7 @@ function AutoCutoffTab({ authenticatedFetch, user }) {
   const [allRentals, setAllRentals] = useState([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [loadingOverdue, setLoadingOverdue] = useState(false);
-  const [minOverdueDays, setMinOverdueDays] = useState(0);  // Default to 0 to show all overdue
+  const [minOverdueDays, setMinOverdueDays] = useState(999);  // 999 = show ALL overdue (< 0)
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedRiders, setSelectedRiders] = useState([]);
@@ -1310,16 +1310,25 @@ function AutoCutoffTab({ authenticatedFetch, user }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <label style={{ fontSize: 13, color: 'var(--text3)', whiteSpace: 'nowrap' }}>Exact Days:</label>
                 <input
-                  type="number"
-                  value={minOverdueDays}
+                  type="text"
+                  value={minOverdueDays === 999 ? 'All' : minOverdueDays}
                   onChange={(e) => {
-                    setMinOverdueDays(parseInt(e.target.value) || 0);
+                    const val = e.target.value.toLowerCase();
+                    if (val === 'all' || val === '') {
+                      setMinOverdueDays(999);
+                    } else {
+                      const num = parseInt(e.target.value);
+                      if (!isNaN(num)) {
+                        setMinOverdueDays(num);
+                      }
+                    }
                     setCurrentPage(1);
                   }}
+                  placeholder="All"
                   style={{ width: 90, padding: '6px 10px', background: 'var(--bg4)', border: '1px solid var(--border3)', borderRadius: 6, color: 'var(--text)', fontSize: 13 }}
                 />
                 <span style={{ fontSize: 11, color: 'var(--text5)' }}>
-                  (Negative=overdue, 0=due today, Positive=days left. E.g: -7=7 days overdue, 0=due today, 1=due tomorrow)
+                  (All=all overdue, -7=7 days overdue, 0=due today, 1=due tomorrow)
                 </span>
               </div>
             )}
