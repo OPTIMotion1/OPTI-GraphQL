@@ -1148,6 +1148,30 @@ function AutoCutoffTab({ authenticatedFetch, user }) {
 
   const [notifyLoading, setNotifyLoading] = useState(false);
   const [notifyResult, setNotifyResult] = useState(null);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState('overdue_rental_cutoff');
+  const [pendingNotifyAction, setPendingNotifyAction] = useState(null);
+
+  const TEMPLATES = [
+    {
+      id: 'rent_due_today_t0',
+      name: 'T0 - Due Today',
+      description: 'For riders whose rent is due today',
+      icon: '📅'
+    },
+    {
+      id: 'rent_reminder_dashboard',
+      name: 'Reminder - Tomorrow Due',
+      description: 'For riders whose rent is due tomorrow (includes discount)',
+      icon: '⏰'
+    },
+    {
+      id: 'overdue_rental_cutoff',
+      name: 'Cutoff - Overdue Warning',
+      description: 'For overdue riders (cutoff warning)',
+      icon: '🔴'
+    }
+  ];
 
   const notifySelectedRiders = async () => {
     if (!isAdmin) {
@@ -1160,33 +1184,9 @@ function AutoCutoffTab({ authenticatedFetch, user }) {
       return notifyAllFiltered();
     }
 
-    if (!confirm(`Send notifications to ${count} selected rider(s)?`)) {
-      return;
-    }
-
-    setNotifyLoading(true);
-    setNotifyResult(null);
-
-    try {
-      const res = await authenticatedFetch('/api/auto-cutoff/notify', {
-        method: 'POST',
-        body: JSON.stringify({ rentalIds: selectedRiders }),
-      });
-      const data = await res.json();
-      setNotifyResult(data);
-
-      if (!data.success) {
-        throw new Error(data.error || 'Notification API returned failure');
-      }
-
-      setSelectedRiders([]);
-      alert(`✅ Notifications requested: ${data.successCount}/${data.requested} succeeded.`);
-    } catch (error) {
-      setNotifyResult({ success: false, error: error.message });
-      alert(`❌ Failed to send notifications: ${error.message}`);
-    } finally {
-      setNotifyLoading(false);
-    }
+    // Show template selection modal
+    setPendingNotifyAction({ type: 'selected', count });
+    setShowTemplateModal(true);
   };
 
   const notifyAllFiltered = async () => {
@@ -1201,17 +1201,24 @@ function AutoCutoffTab({ authenticatedFetch, user }) {
       return;
     }
 
-    if (!confirm(`Send notifications to ALL ${count} rider(s) matching current filter?`)) {
-      return;
-    }
+    // Show template selection modal
+    setPendingNotifyAction({ type: 'all', count });
+    setShowTemplateModal(true);
+  };
 
+  const executeNotification = async () => {
+    if (!pendingNotifyAction) return;
+
+    setShowTemplateModal(false);
     setNotifyLoading(true);
     setNotifyResult(null);
 
     try {
-      const body = showOnlyOverdue
-        ? { minOverdueDays }
-        : { rentalIds: allRentals.map((r) => r.rentalId) };
+      const body = pendingNotifyAction.type === 'selected'
+        ? { rentalIds: selectedRiders, templateName: selectedTemplate }
+        : showOnlyOverdue
+        ? { minOverdueDays, templateName: selectedTemplate }
+        : { rentalIds: allRentals.map((r) => r.rentalId), templateName: selectedTemplate };
 
       const res = await authenticatedFetch('/api/auto-cutoff/notify', {
         method: 'POST',
@@ -1224,16 +1231,19 @@ function AutoCutoffTab({ authenticatedFetch, user }) {
         throw new Error(data.error || 'Notification API returned failure');
       }
 
-      if (showOnlyOverdue) {
+      if (pendingNotifyAction.type === 'selected') {
+        setSelectedRiders([]);
+      } else if (showOnlyOverdue) {
         setSelectedRiders([]);
       }
 
-      alert(`✅ Notifications requested: ${data.successCount}/${data.requested} succeeded.`);
+      alert(`✅ Notifications sent!\nTemplate: ${TEMPLATES.find(t => t.id === selectedTemplate)?.name}\nSuccess: ${data.successCount}/${data.requested}`);
     } catch (error) {
       setNotifyResult({ success: false, error: error.message });
       alert(`❌ Failed to send notifications: ${error.message}`);
     } finally {
       setNotifyLoading(false);
+      setPendingNotifyAction(null);
     }
   };
 
@@ -1306,9 +1316,11 @@ function AutoCutoffTab({ authenticatedFetch, user }) {
                     setMinOverdueDays(parseInt(e.target.value) || 0);
                     setCurrentPage(1);
                   }}
-                  style={{ width: 70, padding: '6px 10px', background: 'var(--bg4)', border: '1px solid var(--border3)', borderRadius: 6, color: 'var(--text)', fontSize: 13 }}
+                  style={{ width: 90, padding: '6px 10px', background: 'var(--bg4)', border: '1px solid var(--border3)', borderRadius: 6, color: 'var(--text)', fontSize: 13 }}
                 />
-                <span style={{ fontSize: 11, color: 'var(--text5)' }}>(0 = due today, -7 = only -7 days overdue)</span>
+                <span style={{ fontSize: 11, color: 'var(--text5)' }}>
+                  (Negative=overdue, 0=due today, Positive=days left. E.g: -7=7 days overdue, 0=due today, 1=due tomorrow)
+                </span>
               </div>
             )}
             <button className="refresh-btn" onClick={() => { fetchAllRentals(); fetchOverdueRentals(); }}>
@@ -1637,6 +1649,73 @@ function AutoCutoffTab({ authenticatedFetch, user }) {
           </div>
         )}
       </div>
+
+      {/* Template Selection Modal */}
+      {showTemplateModal && (
+        <div className="modal-backdrop" onClick={() => setShowTemplateModal(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 500 }}>
+            <h3 style={{ marginBottom: 12 }}>📱 Select WhatsApp Template</h3>
+            <p className="muted" style={{ marginBottom: 20 }}>
+              Sending to {pendingNotifyAction?.count} rider(s). Choose which template to use:
+            </p>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
+              {TEMPLATES.map((template) => (
+                <label 
+                  key={template.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 12,
+                    padding: 12,
+                    background: selectedTemplate === template.id ? 'var(--bg4)' : 'transparent',
+                    border: `2px solid ${selectedTemplate === template.id ? 'var(--primary)' : 'var(--border)'}`,
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <input 
+                    type="radio" 
+                    name="template"
+                    value={template.id}
+                    checked={selectedTemplate === template.id}
+                    onChange={(e) => setSelectedTemplate(e.target.value)}
+                    style={{ marginTop: 4 }}
+                  />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                      {template.icon} {template.name}
+                    </div>
+                    <div style={{ fontSize: 13, color: 'var(--text3)' }}>
+                      {template.description}
+                    </div>
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            <div className="modal-actions">
+              <button 
+                className="modal-btn modal-cancel" 
+                onClick={() => {
+                  setShowTemplateModal(false);
+                  setPendingNotifyAction(null);
+                }}
+              >
+                Cancel
+              </button>
+              <button 
+                className="modal-btn modal-confirm" 
+                onClick={executeNotification}
+                disabled={notifyLoading}
+              >
+                {notifyLoading ? '⏳ Sending...' : '✅ Send Notifications'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

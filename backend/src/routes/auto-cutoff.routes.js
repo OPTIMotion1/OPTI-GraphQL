@@ -214,12 +214,89 @@ router.get('/overdue', verifyToken, isAdmin, async (req, res) => {
 });
 
 // ============================================================================
+// GET /api/auto-cutoff/templates
+// Get available WhatsApp templates for notifications
+// ============================================================================
+router.get('/templates', verifyToken, async (req, res) => {
+  try {
+    const templates = [
+      {
+        id: 'rent_due_today_t0',
+        name: 'T0 - Due Today',
+        campaignId: '23224',
+        description: 'Sent when rent is due today (2 variables: name, rent)',
+        variables: ['person_name', 'rent']
+      },
+      {
+        id: 'rent_reminder_dashboard',
+        name: 'Reminder - Tomorrow Due',
+        campaignId: '23213',
+        description: 'Sent when rent is due tomorrow with discount (3 variables: name, rent, discounted_amount)',
+        variables: ['person_name', 'rent', 'discounted_amount']
+      },
+      {
+        id: 'overdue_rental_cutoff',
+        name: 'Cutoff - Overdue Warning',
+        campaignId: '23215',
+        description: 'Sent when rent is overdue (1 variable: name)',
+        variables: ['person_name']
+      }
+    ];
+
+    res.json({
+      success: true,
+      templates
+    });
+  } catch (error) {
+    console.error('[Auto-Cutoff] Error fetching templates:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// ============================================================================
 // POST /api/auto-cutoff/notify
 // Send WhatsApp template notifications for selected or filtered riders
+// Supports template selection (T0, reminder, cutoff)
 // ============================================================================
 router.post('/notify', verifyToken, isAdmin, async (req, res) => {
   try {
-    const { rentalIds, minOverdueDays } = req.body || {};
+    const { rentalIds, minOverdueDays, templateName } = req.body || {};
+
+    // Template configurations
+    const TEMPLATES = {
+      'rent_due_today_t0': {
+        campaignId: '23224',
+        name: 'rent_due_today_t0',
+        variableCount: 2, // person_name, rent
+        description: 'T0 - Due today notification (2 variables)'
+      },
+      'rent_reminder_dashboard': {
+        campaignId: '23213',
+        name: 'rent_reminder_dashboard',
+        variableCount: 3, // person_name, rent, discounted_amount
+        description: 'Reminder - Tomorrow due with discount (3 variables)'
+      },
+      'overdue_rental_cutoff': {
+        campaignId: '23215',
+        name: 'overdue_rental_cutoff',
+        variableCount: 1, // person_name
+        description: 'Cutoff - Overdue warning (1 variable)'
+      }
+    };
+
+    // Default to cutoff template if not specified
+    const selectedTemplate = templateName || 'overdue_rental_cutoff';
+    const template = TEMPLATES[selectedTemplate];
+
+    if (!template) {
+      return res.status(400).json({
+        success: false,
+        error: `Invalid template: ${selectedTemplate}. Valid options: ${Object.keys(TEMPLATES).join(', ')}`
+      });
+    }
 
     let targetRentals = [];
 
@@ -244,21 +321,45 @@ router.post('/notify', verifyToken, isAdmin, async (req, res) => {
 
     const targets = targetRentals
       .filter((rental) => rental.riderPhone)
-      .map((rental) => ({
-        rentalId: rental.rentalId,
-        to: rental.riderPhone,
-        components: [
-          {
-            type: 'BODY',  // Changed to uppercase BODY as per GetGabs docs
-            parameters: [
-              { 
-                type: 'text', 
-                text: rental.riderName || 'Rider' // {{1}} Rider Name variable
-              }
-            ]
-          }
-        ]
-      }));
+      .map((rental) => {
+        const orig = rental.originalData || {};
+        const totalDue = orig.totalDue || orig.total_due || orig.total_amount || orig.dueAmount || orig.due_amount || orig.amount || 0;
+        const discount = orig.t1_discount || orig.discount || 0;
+        const discountedAmount = totalDue - discount;
+
+        // Build components based on template
+        const components = [{
+          type: 'BODY',
+          parameters: []
+        }];
+
+        if (template.variableCount >= 1) {
+          components[0].parameters.push({
+            type: 'text',
+            text: rental.riderName || 'Rider'
+          });
+        }
+
+        if (template.variableCount >= 2) {
+          components[0].parameters.push({
+            type: 'text',
+            text: String(totalDue)
+          });
+        }
+
+        if (template.variableCount >= 3) {
+          components[0].parameters.push({
+            type: 'text',
+            text: String(discountedAmount)
+          });
+        }
+
+        return {
+          rentalId: rental.rentalId,
+          to: rental.riderPhone,
+          components
+        };
+      });
 
     if (!targets.length) {
       return res.status(400).json({
@@ -267,12 +368,14 @@ router.post('/notify', verifyToken, isAdmin, async (req, res) => {
       });
     }
 
+    console.log(`[Auto-Cutoff] Sending ${template.description} to ${targets.length} riders`);
+
     const results = await sendBulkTemplateMessages(targets, {
       apiKey: process.env.GETGABS_API_KEY,
       sender: process.env.GETGABS_SENDER,
-      campaignId: process.env.GETGABS_CAMPAIGN_ID,
-      templateName: process.env.GETGABS_TEMPLATE_NAME,
-      languageCode: process.env.GETGABS_TEMPLATE_LANGUAGE,
+      campaignId: template.campaignId,
+      templateName: template.name,
+      languageCode: process.env.GETGABS_TEMPLATE_LANGUAGE || 'en_US',
     });
 
     const successCount = results.filter((item) => item.success).length;
@@ -283,6 +386,7 @@ router.post('/notify', verifyToken, isAdmin, async (req, res) => {
       requested: results.length,
       successCount,
       failures: failedItems,
+      template: selectedTemplate,
       results
     });
   } catch (error) {
