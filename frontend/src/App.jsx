@@ -1810,14 +1810,32 @@ function BulkNotifyTab({ authenticatedFetch }) {
         // Always calculate: final amount = rent - discount
         const var3Value = String(rent - discount);
         
-        return {
-          phone: row[columnMapping.phone],
-          name: row[columnMapping.name],
-          variables: [
+        // Build variables array based on template
+        let variables;
+        if (template === 'rent_due_today_t0') {
+          // T0 template: 2 variables only (person_name, rent)
+          variables = [
+            row[columnMapping.var1],  // Customer name
+            row[columnMapping.var2]   // Regular rent amount
+          ];
+        } else if (template === 'rent_reminder_dashboard') {
+          // Reminder template: 3 variables (person_name, rent, discounted_amount)
+          variables = [
             row[columnMapping.var1],  // Customer name
             row[columnMapping.var2],  // Regular rent amount
             var3Value                 // Calculated discounted amount
-          ]
+          ];
+        } else {
+          // Cutoff template: 1 variable (person_name)
+          variables = [
+            row[columnMapping.var1]   // Customer name
+          ];
+        }
+        
+        return {
+          phone: row[columnMapping.phone],
+          name: row[columnMapping.name],
+          variables
         };
       });
 
