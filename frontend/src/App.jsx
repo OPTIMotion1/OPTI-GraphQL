@@ -1317,24 +1317,24 @@ function AutoCutoffTab({ authenticatedFetch, user }) {
                 <label style={{ fontSize: 13, color: 'var(--text3)', whiteSpace: 'nowrap' }}>Exact Days:</label>
                 <input
                   type="text"
-                  value={minOverdueDays === 999 ? 'All' : minOverdueDays}
+                  value={minOverdueDays === 999 ? '' : minOverdueDays}
                   onChange={(e) => {
-                    const val = e.target.value.toLowerCase();
-                    if (val === 'all' || val === '') {
+                    const val = e.target.value.trim();
+                    if (val === '' || val.toLowerCase() === 'all') {
                       setMinOverdueDays(999);
                     } else {
-                      const num = parseInt(e.target.value);
+                      const num = parseInt(val, 10);
                       if (!isNaN(num)) {
                         setMinOverdueDays(num);
                       }
                     }
                     setCurrentPage(1);
                   }}
-                  placeholder="All"
-                  style={{ width: 90, padding: '6px 10px', background: 'var(--bg4)', border: '1px solid var(--border3)', borderRadius: 6, color: 'var(--text)', fontSize: 13 }}
+                  placeholder="All (all overdue)"
+                  style={{ width: 120, padding: '6px 10px', background: 'var(--bg4)', border: '1px solid var(--border3)', borderRadius: 6, color: 'var(--text)', fontSize: 13, textAlign: 'center' }}
                 />
-                <span style={{ fontSize: 11, color: 'var(--text5)' }}>
-                  (All=all overdue, -7=7 days overdue, 0=due today, 1=due tomorrow)
+                <span style={{ fontSize: 11, color: 'var(--text5)', maxWidth: 400 }}>
+                  Type: <strong>0</strong> = due today, <strong>1</strong> = due tomorrow, <strong>-7</strong> = 7 days overdue, or leave empty for all overdue
                 </span>
               </div>
             )}
