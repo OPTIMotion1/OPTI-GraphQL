@@ -138,6 +138,33 @@ router.get('/status/:jobId', (req, res) => {
   });
 });
 
+// GET /api/bulk-notify/jobs - List all jobs
+router.get('/jobs', (req, res) => {
+  try {
+    const jobs = global.bulkNotifyJobs || {};
+    const jobList = Object.keys(jobs).map(jobId => ({
+      jobId,
+      status: jobs[jobId].status,
+      total: jobs[jobId].total,
+      sent: jobs[jobId].sent,
+      failed: jobs[jobId].failed,
+      startTime: jobs[jobId].startTime,
+      endTime: jobs[jobId].endTime
+    }));
+    
+    // Sort by start time (newest first)
+    jobList.sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
+    
+    res.json({
+      success: true,
+      jobs: jobList
+    });
+  } catch (error) {
+    console.error('Error fetching jobs:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // GET /api/bulk-notify/templates - Get available templates
 router.get('/templates', (req, res) => {
   // Return available GetGabs templates
@@ -151,9 +178,15 @@ router.get('/templates', (req, res) => {
         campaignId: '23224'
       },
       {
+        name: 'rent_reminder_t1',
+        displayName: 'Rent Reminder T1 (Day Before)',
+        variables: ['Customer Name', 'Rent Amount'],
+        campaignId: '23321'
+      },
+      {
         name: 'rent_reminder_dashboard',
         displayName: 'Rent Reminder (Tomorrow)',
-        variables: ['Customer Name', 'Vehicle Rent'],
+        variables: ['Customer Name', 'Vehicle Rent', 'Discounted Amount'],
         campaignId: '23213'
       },
       {

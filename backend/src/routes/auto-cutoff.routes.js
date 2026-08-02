@@ -273,6 +273,12 @@ router.post('/notify', verifyToken, isAdmin, async (req, res) => {
         variableCount: 2, // person_name, rent
         description: 'T0 - Due today notification (2 variables)'
       },
+      'rent_reminder_t1': {
+        campaignId: '23321',
+        name: 'rent_reminder_t1',
+        variableCount: 2, // person_name, rent
+        description: 'T1 - Day before due notification (2 variables)'
+      },
       'rent_reminder_dashboard': {
         campaignId: '23213',
         name: 'rent_reminder_dashboard',

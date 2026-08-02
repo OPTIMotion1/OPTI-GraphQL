@@ -1160,6 +1160,12 @@ function AutoCutoffTab({ authenticatedFetch, user }) {
       icon: '📅'
     },
     {
+      id: 'rent_reminder_t1',
+      name: 'T1 - Day Before Due',
+      description: 'For riders whose rent is due tomorrow (day before)',
+      icon: '🔔'
+    },
+    {
       id: 'rent_reminder_dashboard',
       name: 'Reminder - Tomorrow Due',
       description: 'For riders whose rent is due tomorrow (includes discount)',
@@ -1812,8 +1818,8 @@ function BulkNotifyTab({ authenticatedFetch }) {
         
         // Build variables array based on template
         let variables;
-        if (template === 'rent_due_today_t0') {
-          // T0 template: 2 variables only (person_name, rent)
+        if (template === 'rent_due_today_t0' || template === 'rent_reminder_t1') {
+          // T0 and T1 templates: 2 variables only (person_name, rent)
           variables = [
             row[columnMapping.var1],  // Customer name
             row[columnMapping.var2]   // Regular rent amount
@@ -1847,6 +1853,7 @@ function BulkNotifyTab({ authenticatedFetch }) {
           template: {
             name: template,
             campaignId: template === 'rent_due_today_t0' ? '23224' : 
+                       template === 'rent_reminder_t1' ? '23321' :
                        template === 'rent_reminder_dashboard' ? '23213' : '23215'
           },
           rateLimit: 5  // 5 messages per second
@@ -1913,6 +1920,7 @@ function BulkNotifyTab({ authenticatedFetch }) {
               }}
             >
               <option value="rent_due_today_t0">Rent Due Today - T0 (2 variables)</option>
+              <option value="rent_reminder_t1">Rent Reminder - T1 Day Before (2 variables)</option>
               <option value="rent_reminder_dashboard">Rent Reminder - Tomorrow (3 variables)</option>
               <option value="overdue_rental_cutoff">Overdue Cutoff Warning (1 variable)</option>
             </select>
