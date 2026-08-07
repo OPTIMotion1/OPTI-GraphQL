@@ -971,11 +971,6 @@ function ActivityTab({ assets, commandStatus, authenticatedFetch }) {
     </div>
   );
 }
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ── RIDER ACTIONS MENU COMPONENT ─────────────────────────────────────────────
 function RiderActionsMenu({ rental, onAction }) {
