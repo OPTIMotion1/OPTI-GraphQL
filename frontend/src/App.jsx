@@ -808,66 +808,169 @@ function SettingsTab({ dark, setDark }) {
 }
 
 // ── ACTIVITY LOG TAB ──────────────────────────────────────────────────────────
-function ActivityTab({ assets, commandStatus }) {
+function ActivityTab({ assets, commandStatus, authenticatedFetch }) {
   const [activities, setActivities] = useState([]);
-  const activityRef = useRef([]);
+  const [loading, setLoading] = useState(false);
+  const [stats, setStats] = useState(null);
 
-  // Track commands sent
+  // Fetch activity logs from backend
+  const fetchActivityLogs = async () => {
+    setLoading(true);
+    try {
+      const res = await authenticatedFetch('/api/activity/recent?limit=100');
+      const data = await res.json();
+      
+      if (data.success) {
+        setActivities(data.logs || []);
+      }
+    } catch (error) {
+      console.error('Error fetching activity logs:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch activity stats
+  const fetchStats = async () => {
+    try {
+      const res = await authenticatedFetch('/api/activity/stats');
+      const data = await res.json();
+      
+      if (data.success) {
+        setStats(data.stats);
+      }
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
+
+  // Load on mount and refresh every 30 seconds
   useEffect(() => {
-    const newActivity = Object.entries(commandStatus).map(([deviceId, status]) => ({
-      id: `${deviceId}-${Date.now()}`,
-      deviceId,
-      status: status.state,
-      message: status.message,
-      timestamp: new Date(),
-    }));
+    fetchActivityLogs();
+    fetchStats();
     
-    if (newActivity.length > 0) {
-      activityRef.current = [...newActivity, ...activityRef.current].slice(0, 50);
-      setActivities(activityRef.current);
-    }
-  }, [commandStatus]);
+    const interval = setInterval(() => {
+      fetchActivityLogs();
+      fetchStats();
+    }, 30000); // Refresh every 30 seconds
+    
+    return () => clearInterval(interval);
+  }, []);
 
-  const getDeviceName = (deviceId) => {
-    for (const asset of assets) {
-      const device = (asset.iot_devices || []).find((d) => d.id === parseInt(deviceId, 10));
-      if (device) return `${asset.name} (${device.device_id})`;
-    }
-    return `Device ${deviceId}`;
+  const getActivityIcon = (log) => {
+    if (log.type === 'notification') return '📱';
+    if (log.command_type === 'engine_cutoff') return '🔒';
+    if (log.command_type === 'engine_restore') return '🔓';
+    if (log.command_type === 'location_request') return '📍';
+    return '•';
   };
 
-  const getActivityIcon = (state) => {
-    if (state === "success") return "✅";
-    if (state === "error") return "❌";
-    if (state === "pending") return "⏳";
-    return "•";
+  const getActivityColor = (log) => {
+    if (log.success) return "activity-success";
+    return "activity-error";
   };
 
-  const getActivityColor = (state) => {
-    if (state === "success") return "activity-success";
-    if (state === "error") return "activity-error";
-    if (state === "pending") return "activity-pending";
-    return "activity-neutral";
+  const formatTimestamp = (timestamp) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
+    
+    return date.toLocaleString('en-IN', { 
+      month: 'short', 
+      day: 'numeric', 
+      hour: '2-digit', 
+      minute: '2-digit'
+    });
+  };
+
+  const renderActivityDetails = (log) => {
+    if (log.type === 'notification') {
+      return (
+        <>
+          <div className="activity-device">
+            📤 Bulk Notification: {log.template_name}
+          </div>
+          <div className="activity-message">
+            Sent by {log.user_name} ({log.user_role}) | 
+            Total: {log.total_recipients} | 
+            ✅ {log.success_count} | 
+            ❌ {log.failed_count}
+          </div>
+        </>
+      );
+    } else {
+      return (
+        <>
+          <div className="activity-device">
+            {log.vehicle_name || `Vehicle ${log.vehicle_id}`}
+          </div>
+          <div className="activity-message">
+            {log.command_type} by {log.user_name} ({log.user_role}) | 
+            Status: {log.command_status || 'unknown'}
+          </div>
+        </>
+      );
+    }
   };
 
   return (
     <div className="panel">
-      <h2>Activity Log</h2>
-      <p className="muted" style={{ marginBottom: 16 }}>Recent commands and system events.</p>
-      {activities.length === 0 ? (
-        <p className="muted">No activity yet.</p>
+      <div className="panel-head">
+        <h2>Activity Log</h2>
+        <button className="refresh-btn" onClick={() => { fetchActivityLogs(); fetchStats(); }} disabled={loading}>
+          {loading ? '⏳ Loading...' : '↻ Refresh'}
+        </button>
+      </div>
+
+      {/* Stats Cards */}
+      {stats && (
+        <div className="cards" style={{ marginBottom: 22 }}>
+          <div className="card">
+            <span className="card-label">Total Commands</span>
+            <span className="card-value">{stats.total_commands}</span>
+          </div>
+          <div className="card card-online-tone">
+            <span className="card-label">Successful</span>
+            <span className="card-value">{stats.successful_commands}</span>
+          </div>
+          <div className="card card-offline-tone">
+            <span className="card-label">Failed</span>
+            <span className="card-value">{stats.failed_commands}</span>
+          </div>
+          <div className="card">
+            <span className="card-label">Notifications Today</span>
+            <span className="card-value">{stats.today_notifications_sent}</span>
+          </div>
+        </div>
+      )}
+      
+      <p className="muted" style={{ marginBottom: 16 }}>Recent commands and notifications.</p>
+      
+      {loading && activities.length === 0 ? (
+        <p className="muted">Loading activity...</p>
+      ) : activities.length === 0 ? (
+        <p className="muted">No activity yet. Send a command or notification to see it here.</p>
       ) : (
         <div className="activity-list">
-          {activities.map((act) => (
-            <div key={act.id} className={`activity-item ${getActivityColor(act.status)}`}>
-              <span className="activity-icon">{getActivityIcon(act.status)}</span>
+          {activities.map((log) => (
+            <div key={log.id} className={`activity-item ${getActivityColor(log)}`}>
+              <span className="activity-icon">{getActivityIcon(log)}</span>
               <div className="activity-content">
-                <div className="activity-device">{getDeviceName(act.deviceId)}</div>
-                <div className="activity-message">{act.message}</div>
+                {renderActivityDetails(log)}
               </div>
-              <span className="activity-time">{act.timestamp.toLocaleTimeString()}</span>
+              <span className="activity-time">{formatTimestamp(log.timestamp)}</span>
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
         </div>
       )}
     </div>
@@ -2233,7 +2336,7 @@ export default function App() {
         {activeTab === "commands"  && <CommandsTab  assets={assets} authenticatedFetch={authenticatedFetch} />}
         {activeTab === "autocutoff" && <AutoCutoffTab authenticatedFetch={authenticatedFetch} user={user} />}
         {activeTab === "bulknotify" && <BulkNotifyTab authenticatedFetch={authenticatedFetch} />}
-        {activeTab === "activity"  && <ActivityTab  assets={assets} commandStatus={commandStatus} />}
+        {activeTab === "activity"  && <ActivityTab  assets={assets} commandStatus={commandStatus} authenticatedFetch={authenticatedFetch} />}
         {activeTab === "settings"  && <SettingsTab  dark={dark} setDark={setDark} />}
       </main>
 
