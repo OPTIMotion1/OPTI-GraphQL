@@ -13,8 +13,7 @@ const ALLOWED_COMMANDS = [
 ];
 
 // POST /api/command  { "deviceId": 284, "commandType": "engine_cutoff", "vehicleName": "SL215442" }
-// AUTHENTICATION TEMPORARILY DISABLED FOR TESTING
-router.post("/", async (req, res) => {
+router.post("/", verifyToken, canSendCommand, async (req, res) => {
   const { deviceId, commandType, vehicleName, vehicleId } = req.body;
 
   if (!deviceId) {
@@ -31,9 +30,8 @@ router.post("/", async (req, res) => {
   try {
     const result = await sendDeviceCommand(deviceId, commandType);
     
-    // Log command activity (handle case when user is undefined due to bypassed auth)
-    const user = req.user || { id: 0, name: 'System', role: 'system' };
-    logCommand(user, { id: vehicleId, name: vehicleName || deviceId }, commandType, result);
+    // Log command activity with authenticated user
+    logCommand(req.user, { id: vehicleId, name: vehicleName || deviceId }, commandType, result);
     
     res.json({
       success: true,
@@ -44,9 +42,8 @@ router.post("/", async (req, res) => {
   } catch (error) {
     console.log("ERROR sending command:", error.message);
     
-    // Log failed command (handle case when user is undefined)
-    const user = req.user || { id: 0, name: 'System', role: 'system' };
-    logCommand(user, { id: vehicleId, name: vehicleName || deviceId }, commandType, null);
+    // Log failed command with authenticated user
+    logCommand(req.user, { id: vehicleId, name: vehicleName || deviceId }, commandType, null);
     
     res.status(500).json({ success: false, error: error.message });
   }

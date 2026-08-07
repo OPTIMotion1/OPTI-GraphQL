@@ -812,6 +812,7 @@ function ActivityTab({ assets, commandStatus, authenticatedFetch }) {
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState(null);
+  const [expandedNotification, setExpandedNotification] = useState(null);
 
   // Fetch activity logs from backend
   const fetchActivityLogs = async () => {
@@ -890,10 +891,12 @@ function ActivityTab({ assets, commandStatus, authenticatedFetch }) {
 
   const renderActivityDetails = (log) => {
     if (log.type === 'notification') {
+      const isExpanded = expandedNotification === log.id;
+      
       return (
         <>
-          <div className="activity-device">
-            📤 Bulk Notification: {log.template_name}
+          <div className="activity-device" style={{ cursor: 'pointer' }} onClick={() => setExpandedNotification(isExpanded ? null : log.id)}>
+            📤 Bulk Notification: {log.template_name} {isExpanded ? '▼' : '▶'}
           </div>
           <div className="activity-message">
             Sent by {log.user_name} ({log.user_role}) | 
@@ -901,6 +904,38 @@ function ActivityTab({ assets, commandStatus, authenticatedFetch }) {
             ✅ {log.success_count} | 
             ❌ {log.failed_count}
           </div>
+          
+          {/* Expandable recipient list */}
+          {isExpanded && log.recipients && log.recipients.length > 0 && (
+            <div style={{ marginTop: 12, padding: 12, background: 'var(--bg4)', borderRadius: 6, fontSize: 12 }}>
+              <div style={{ fontWeight: 600, marginBottom: 8 }}>📋 Recipients ({log.recipients.length}):</div>
+              <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+                {log.recipients.map((recipient, idx) => (
+                  <div 
+                    key={idx}
+                    style={{ 
+                      padding: '6px 8px', 
+                      marginBottom: 4, 
+                      background: recipient.success ? 'var(--bg3)' : 'rgba(255, 92, 92, 0.1)',
+                      borderRadius: 4,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}
+                  >
+                    <div>
+                      <span style={{ marginRight: 8 }}>{recipient.success ? '✅' : '❌'}</span>
+                      <span style={{ fontWeight: 500 }}>{recipient.name}</span>
+                      <span style={{ marginLeft: 8, color: 'var(--text3)' }}>({recipient.phone})</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text3)' }}>
+                      {recipient.success ? recipient.status || 'Delivered' : recipient.error}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </>
       );
     } else {
