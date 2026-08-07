@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { logNotification } = require('./activity-log.service');
 
 const GETGABS_API_KEY = process.env.GETGABS_API_KEY;
 const GETGABS_API_URL = process.env.GETGABS_API_URL;
@@ -88,7 +89,7 @@ async function sendSingleNotification(phone, name, templateName, campaignId, var
 /**
  * Send bulk notifications with rate limiting
  */
-async function sendBulkNotifications(jobId, recipients, template, rateLimit = 5) {
+async function sendBulkNotifications(jobId, recipients, template, rateLimit = 5, user = null) {
   const startTime = Date.now();
   const results = [];
   
@@ -150,6 +151,11 @@ async function sendBulkNotifications(jobId, recipients, template, rateLimit = 5)
   global.bulkNotifyJobs[jobId].durationMs = duration;
 
   console.log(`[Bulk Notify] Job ${jobId} completed in ${duration}ms - ${results.filter(r => r.success).length} sent, ${results.filter(r => !r.success).length} failed`);
+
+  // Log to persistent activity log if user is provided
+  if (user) {
+    logNotification(user, recipients, template.name, template.campaignId, results);
+  }
 
   return results;
 }

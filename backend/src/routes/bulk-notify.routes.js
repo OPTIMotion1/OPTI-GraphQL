@@ -101,11 +101,14 @@ router.post('/send', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Template name is required' });
     }
 
-    // Start bulk sending (non-blocking)
+    // Get user from auth token (or use System if not authenticated)
+    const user = req.user || { id: 0, name: 'System', role: 'system' };
+
+    // Start bulk sending (non-blocking) with user info for logging
     const jobId = Date.now().toString();
     
     // Send in background
-    sendBulkNotifications(jobId, recipients, template, rateLimit || 5)
+    sendBulkNotifications(jobId, recipients, template, rateLimit || 5, user)
       .catch(err => console.error('Bulk send error:', err));
 
     res.json({
