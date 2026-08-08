@@ -5,6 +5,7 @@ const csv = require('csv-parser');
 const fs = require('fs');
 const path = require('path');
 const { sendBulkNotifications } = require('../services/bulk-notify.service');
+const { verifyToken } = require('../middleware/auth.middleware');
 
 // Ensure uploads directory exists
 const uploadsDir = path.join(__dirname, '..', '..', 'uploads');
@@ -36,7 +37,7 @@ const upload = multer({
 });
 
 // POST /api/bulk-notify/upload - Parse CSV and return preview
-router.post('/upload', upload.single('csvFile'), async (req, res) => {
+router.post('/upload', verifyToken, upload.single('csvFile'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, error: 'No CSV file uploaded' });
@@ -85,7 +86,7 @@ router.post('/upload', upload.single('csvFile'), async (req, res) => {
 });
 
 // POST /api/bulk-notify/send - Send bulk notifications
-router.post('/send', async (req, res) => {
+router.post('/send', verifyToken, async (req, res) => {
   try {
     const { 
       recipients,  // Array of { phone, name, variables }
@@ -101,8 +102,8 @@ router.post('/send', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Template name is required' });
     }
 
-    // Get user from auth token (or use System if not authenticated)
-    const user = req.user || { id: 0, name: 'System', role: 'system' };
+    // Get user from auth token
+    const user = req.user;
 
     // Start bulk sending (non-blocking) with user info for logging
     const jobId = Date.now().toString();
@@ -125,7 +126,7 @@ router.post('/send', async (req, res) => {
 });
 
 // GET /api/bulk-notify/status/:jobId - Get bulk send status
-router.get('/status/:jobId', (req, res) => {
+router.get('/status/:jobId', verifyToken, (req, res) => {
   const { jobId } = req.params;
   
   // Get status from in-memory store or database
@@ -142,7 +143,7 @@ router.get('/status/:jobId', (req, res) => {
 });
 
 // GET /api/bulk-notify/jobs - List all jobs
-router.get('/jobs', (req, res) => {
+router.get('/jobs', verifyToken, (req, res) => {
   try {
     const jobs = global.bulkNotifyJobs || {};
     const jobList = Object.keys(jobs).map(jobId => ({
@@ -169,7 +170,7 @@ router.get('/jobs', (req, res) => {
 });
 
 // GET /api/bulk-notify/templates - Get available templates
-router.get('/templates', (req, res) => {
+router.get('/templates', verifyToken, (req, res) => {
   // Return available GetGabs templates
   res.json({
     success: true,
