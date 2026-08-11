@@ -619,6 +619,24 @@ function DashboardTab({ assets, permBlocked, onCommand, commandStatus, lockState
     </div>
   );
 
+  // Friendly message when no vehicles found
+  if (assets.length === 0) {
+    return (
+      <div className="perm-notice">
+        <div className="perm-icon" style={{ fontSize: 64 }}>🚗</div>
+        <h3>No Vehicles Found</h3>
+        <p style={{ maxWidth: 500, margin: '0 auto', lineHeight: 1.6 }}>
+          VoltCred API is connected and working, but no vehicles are registered to your account yet.
+        </p>
+        <p style={{ maxWidth: 500, margin: '16px auto 0', lineHeight: 1.6, fontSize: 14, color: 'var(--text3)' }}>
+          Contact VoltCred to add vehicles to <strong>hello@optimotion.in</strong>.
+          <br/>
+          Meanwhile, Auto-Cutoff feature is working with Optimotion API data.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="cards">

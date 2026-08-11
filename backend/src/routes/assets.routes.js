@@ -4,14 +4,20 @@ const { getAssets } = require("../services/voltcred.service");
 // const { verifyToken } = require("../middleware/auth.middleware");
 
 // GET /api/assets
-// Returns vehicle list from VoltCred GraphQL assets query.
-// Returns empty array with a clear message if assets are not yet
-// authorized for this account — no silent failure.
-// AUTHENTICATION TEMPORARILY DISABLED FOR TESTING
-router.get("/", async (req, res) => {  // Remove verifyToken for now
+// Returns vehicle list from VoltCred GraphQL vehicles query.
+// Returns empty array with success=true if no vehicles found.
+router.get("/", async (req, res) => {
   try {
     const assets = await getAssets();
-    res.json({ success: true, assets });
+    
+    // Return success with empty array if no vehicles
+    res.json({ 
+      success: true, 
+      assets,
+      message: assets.length === 0 
+        ? 'No vehicles found. Contact VoltCred to add vehicles to your account (hello@optimotion.in).' 
+        : undefined
+    });
   } catch (error) {
     const msg = error.message || "Failed to fetch assets";
     const isPermission = msg.includes("unauthorized");

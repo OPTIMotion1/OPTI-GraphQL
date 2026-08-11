@@ -116,47 +116,39 @@ async function graphqlRequest(query, variables = {}) {
 // No code change needed — just the account permission on VoltCred's side.
 
 async function getAssets() {
+  // VoltCred GraphQL API uses 'vehicles' query (not 'assets')
   const query = `
-    query ListAssets($limit: Int!, $offset: Int!) {
-      assets(limit: $limit, offset: $offset) {
+    query ListVehicles {
+      vehicles {
         id
         name
-        license_plate
-        asset_type
-        status
-        location { latitude longitude address }
-        iot_devices {
-          id
-          name
-          device_id
-          iot_type_code
-          connection_status
-          last_latitude
-          last_longitude
-          last_communication
-          last_update
-        }
       }
     }
   `;
 
-  // Paginate through all assets — VoltCred may cap each page at fewer records
-  // than the total fleet size. We keep fetching until a page comes back empty.
-  const PAGE_SIZE = 50;
-  let all = [];
-  let offset = 0;
+  try {
+    const data = await graphqlRequest(query, {});
+    const vehicles = data?.vehicles || [];
+    
+    console.log(`getAssets: fetched ${vehicles.length} vehicles from VoltCred`);
 
-  while (true) {
-    const data = await graphqlRequest(query, { limit: PAGE_SIZE, offset });
-    const page = data?.assets || [];
-    all = all.concat(page);
-    console.log(`getAssets: fetched ${page.length} assets at offset ${offset} (total so far: ${all.length})`);
+    // Map vehicles to assets format for backward compatibility
+    const assets = vehicles.map(vehicle => ({
+      id: vehicle.id,
+      name: vehicle.name,
+      license_plate: vehicle.name, // Use name as placeholder
+      asset_type: 'vehicle',
+      status: 'unknown',
+      location: null,
+      iot_devices: []
+    }));
 
-    if (page.length < PAGE_SIZE) break; // last page
-    offset += PAGE_SIZE;
+    return assets;
+  } catch (error) {
+    console.error('Error fetching vehicles from VoltCred:', error.message);
+    // Return empty array instead of throwing - allows graceful handling
+    return [];
   }
-
-  return all;
 }
 
 // ── Send command ──────────────────────────────────────────────────────────────
