@@ -9,6 +9,7 @@ const {
 const { getOverdueRentals, getAllRentals } = require('../services/renewals.service');
 const { sendBulkTemplateMessages, sendTemplateMessage } = require('../services/getgabs.service');
 const { verifyToken, isAdmin } = require('../middleware/auth.middleware');
+const { logNotification } = require('../services/activity-log.service');
 
 // ============================================================================
 // POST /api/auto-cutoff/check-and-execute
@@ -386,6 +387,34 @@ router.post('/notify', verifyToken, isAdmin, async (req, res) => {
 
     const successCount = results.filter((item) => item.success).length;
     const failedItems = results.filter((item) => !item.success);
+
+    // Log notification to activity log
+    const recipients = targetRentals.map((rental, index) => {
+      const result = results[index];
+      return {
+        rentalId: rental.rentalId,
+        name: rental.riderName || 'Unknown',
+        phone: rental.riderPhone,
+        success: result?.success || false,
+        error: result?.error || null
+      };
+    });
+
+    await logNotification({
+      user: req.user.name,
+      role: req.user.role,
+      action: 'bulk_notify',
+      template: selectedTemplate,
+      templateDescription: template.description,
+      campaignId: template.campaignId,
+      totalRequested: results.length,
+      successCount,
+      failedCount: failedItems.length,
+      recipients,
+      timestamp: new Date().toISOString()
+    });
+
+    console.log(`[Auto-Cutoff] Notification logged to activity: ${successCount}/${results.length} successful`);
 
     res.json({
       success: true,

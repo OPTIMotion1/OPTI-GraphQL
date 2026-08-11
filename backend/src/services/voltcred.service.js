@@ -68,10 +68,21 @@ async function graphqlRequest(query, variables = {}) {
 
     if (errors?.length) {
       const msg = errors[0]?.message;
+      const extensions = errors[0]?.extensions;
+      
+      console.error("GraphQL Error:", msg);
+      if (extensions) {
+        console.error("Error Details:", JSON.stringify(extensions, null, 2));
+      }
+      
       if (msg === "unauthorized") {
+        console.log("Token expired, re-logging in...");
         await login();
         const retry = await makeRequest();
-        if (retry.data?.errors?.length) throw new Error(retry.data.errors[0].message);
+        if (retry.data?.errors?.length) {
+          console.error("Retry failed:", retry.data.errors[0]);
+          throw new Error(retry.data.errors[0].message);
+        }
         return retry.data?.data;
       }
       throw new Error(msg || "GraphQL error");
@@ -79,7 +90,14 @@ async function graphqlRequest(query, variables = {}) {
 
     return response.data?.data;
   } catch (error) {
+    // Capture HTTP-level errors (400, 401, 500, etc.)
+    if (error.response) {
+      console.error("HTTP Error:", error.response.status, error.response.statusText);
+      console.error("Response Data:", JSON.stringify(error.response.data, null, 2));
+    }
+    
     if (error.response?.status === 401) {
+      console.log("401 Unauthorized, re-logging in...");
       await login();
       const retry = await makeRequest();
       return retry.data?.data;

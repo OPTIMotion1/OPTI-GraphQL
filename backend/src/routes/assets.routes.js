@@ -16,13 +16,23 @@ router.get("/", async (req, res) => {  // Remove verifyToken for now
     const msg = error.message || "Failed to fetch assets";
     const isPermission = msg.includes("unauthorized");
 
-    console.log("ERROR fetching assets:", msg);
+    // Enhanced error logging for debugging
+    console.error("❌ ERROR fetching assets:", msg);
+    if (error.response) {
+      console.error("   Response Status:", error.response.status);
+      console.error("   Response Data:", JSON.stringify(error.response.data, null, 2));
+    }
+    if (error.stack) {
+      console.error("   Stack:", error.stack.split('\n').slice(0, 3).join('\n'));
+    }
+
     res.status(isPermission ? 403 : 500).json({
       success: false,
       permissionBlocked: isPermission,
       error: isPermission
         ? "Assets query is not authorized for this account. Ask VoltCred to enable assets permission for hello@optimotion.in on the GraphQL API."
         : msg,
+      details: error.response?.data || null,
     });
   }
 });
