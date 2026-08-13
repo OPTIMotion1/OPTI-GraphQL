@@ -116,36 +116,99 @@ async function graphqlRequest(query, variables = {}) {
 // No code change needed — just the account permission on VoltCred's side.
 
 async function getAssets() {
-  // VoltCred GraphQL API uses 'vehicles' query (not 'assets')
+  // VoltCred NEW API (updated Aug 2026) - uses 'assetsWithPagination' 
+  // Old 'assets' query was removed - now returns paginated structure
   const query = `
-    query ListVehicles {
-      vehicles {
-        id
-        name
+    query ListAssetsPage($limit: Int, $offset: Int) {
+      assetsWithPagination(limit: $limit, offset: $offset) {
+        total
+        counts {
+          moving
+          idle
+          stopped
+          offline
+          untracked
+          total
+        }
+        rows {
+          id
+          name
+          license_plate
+          operator_name
+          model
+          status
+          primary_iot_device {
+            id
+            connection_status
+            location { 
+              latitude 
+              longitude 
+              address 
+              speed 
+              bearing 
+              timestamp 
+            }
+            state {
+              key
+              label
+              value
+              observed
+              updated_at
+              stale
+              writable
+            }
+          }
+          iot_devices {
+            id
+            device_id
+            connection_status
+          }
+        }
       }
     }
   `;
 
   try {
-    const data = await graphqlRequest(query, {});
-    const vehicles = data?.vehicles || [];
+    const data = await graphqlRequest(query, { limit: 200, offset: 0 });
+    const result = data?.assetsWithPagination;
     
-    console.log(`getAssets: fetched ${vehicles.length} vehicles from VoltCred`);
+    if (!result) {
+      console.log('getAssets: No assetsWithPagination in response');
+      return [];
+    }
 
-    // Map vehicles to assets format for backward compatibility
-    const assets = vehicles.map(vehicle => ({
-      id: vehicle.id,
-      name: vehicle.name,
-      license_plate: vehicle.name, // Use name as placeholder
+    const assets = result.rows || [];
+    console.log(`getAssets: fetched ${assets.length} of ${result.total} total assets from VoltCred`);
+    console.log(`Status counts - Moving: ${result.counts?.moving}, Idle: ${result.counts?.idle}, Offline: ${result.counts?.offline}`);
+
+    // Map new structure to old format for backward compatibility
+    const mappedAssets = assets.map(asset => ({
+      id: asset.id,
+      name: asset.name,
+      license_plate: asset.license_plate,
       asset_type: 'vehicle',
-      status: 'unknown',
-      location: null,
-      iot_devices: []
+      status: asset.status,
+      location: asset.primary_iot_device?.location ? {
+        latitude: asset.primary_iot_device.location.latitude,
+        longitude: asset.primary_iot_device.location.longitude,
+        address: asset.primary_iot_device.location.address
+      } : null,
+      iot_devices: (asset.iot_devices || []).map(device => ({
+        id: device.id,
+        device_id: device.device_id,
+        connection_status: device.connection_status,
+        // Add telemetry from primary device if this is the primary device
+        ...(asset.primary_iot_device?.id === device.id && asset.primary_iot_device?.location ? {
+          last_latitude: asset.primary_iot_device.location.latitude,
+          last_longitude: asset.primary_iot_device.location.longitude,
+          last_communication: asset.primary_iot_device.location.timestamp
+        } : {})
+      }))
     }));
 
-    return assets;
+    return mappedAssets;
   } catch (error) {
-    console.error('Error fetching vehicles from VoltCred:', error.message);
+    console.error('Error fetching assets from VoltCred:', error.message);
     // Return empty array instead of throwing - allows graceful handling
     return [];
   }
