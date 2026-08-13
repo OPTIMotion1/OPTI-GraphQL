@@ -8,13 +8,15 @@ const { getAssets } = require("../services/voltcred.service");
 // Returns empty array with success=true if no vehicles found.
 router.get("/", async (req, res) => {
   try {
-    const assets = await getAssets();
+    const result = await getAssets();
     
-    // Return success with empty array if no vehicles
+    // Return success with counts and total
     res.json({ 
       success: true, 
-      assets,
-      message: assets.length === 0 
+      assets: result.assets || [],
+      counts: result.counts || null,
+      total: result.total || 0,
+      message: (result.assets || []).length === 0 
         ? 'No vehicles found. Contact VoltCred to add vehicles to your account (hello@optimotion.in).' 
         : undefined
     });

@@ -136,10 +136,15 @@ async function getAssets() {
           license_plate
           operator_name
           model
+          asset_type
           status
           primary_iot_device {
             id
+            name
+            device_id
+            iot_type_code
             connection_status
+            last_communication
             location { 
               latitude 
               longitude 
@@ -151,17 +156,43 @@ async function getAssets() {
             state {
               key
               label
+              kind
+              unit
               value
               observed
               updated_at
               stale
               writable
+              direction
             }
           }
           iot_devices {
             id
+            name
             device_id
+            iot_type_code
             connection_status
+            last_communication
+            location {
+              latitude
+              longitude
+              address
+              speed
+              bearing
+              timestamp
+            }
+            state {
+              key
+              label
+              kind
+              unit
+              value
+              observed
+              updated_at
+              stale
+              writable
+              direction
+            }
           }
         }
       }
@@ -174,43 +205,88 @@ async function getAssets() {
     
     if (!result) {
       console.log('getAssets: No assetsWithPagination in response');
-      return [];
+      return { assets: [], counts: null, total: 0 };
     }
 
     const assets = result.rows || [];
     console.log(`getAssets: fetched ${assets.length} of ${result.total} total assets from VoltCred`);
-    console.log(`Status counts - Moving: ${result.counts?.moving}, Idle: ${result.counts?.idle}, Offline: ${result.counts?.offline}`);
+    console.log(`Status counts - Moving: ${result.counts?.moving}, Idle: ${result.counts?.idle}, Offline: ${result.counts?.offline}, Untracked: ${result.counts?.untracked}`);
 
-    // Map new structure to old format for backward compatibility
-    const mappedAssets = assets.map(asset => ({
-      id: asset.id,
-      name: asset.name,
-      license_plate: asset.license_plate,
-      asset_type: 'vehicle',
-      status: asset.status,
-      location: asset.primary_iot_device?.location ? {
-        latitude: asset.primary_iot_device.location.latitude,
-        longitude: asset.primary_iot_device.location.longitude,
-        address: asset.primary_iot_device.location.address
-      } : null,
-      iot_devices: (asset.iot_devices || []).map(device => ({
-        id: device.id,
-        device_id: device.device_id,
-        connection_status: device.connection_status,
-        // Add telemetry from primary device if this is the primary device
-        ...(asset.primary_iot_device?.id === device.id && asset.primary_iot_device?.location ? {
-          last_latitude: asset.primary_iot_device.location.latitude,
-          last_longitude: asset.primary_iot_device.location.longitude,
-          last_communication: asset.primary_iot_device.location.timestamp
-        } : {})
-      }))
-    }));
+    // Map new structure with all new fields
+    const mappedAssets = assets.map(asset => {
+      const primaryDevice = asset.primary_iot_device;
+      const location = primaryDevice?.location;
+      
+      // Extract device state into easy-to-use object
+      const deviceState = {};
+      if (primaryDevice?.state) {
+        primaryDevice.state.forEach(s => {
+          deviceState[s.key] = {
+            value: s.value,
+            label: s.label,
+            observed: s.observed,
+            stale: s.stale,
+            writable: s.writable,
+            unit: s.unit,
+            updated_at: s.updated_at
+          };
+        });
+      }
 
-    return mappedAssets;
+      return {
+        id: asset.id,
+        name: asset.name,
+        license_plate: asset.license_plate,
+        operator_name: asset.operator_name,
+        model: asset.model,
+        asset_type: asset.asset_type || 'vehicle',
+        status: asset.status,
+        location: location ? {
+          latitude: location.latitude,
+          longitude: location.longitude,
+          address: location.address,
+          speed: location.speed,
+          bearing: location.bearing,
+          timestamp: location.timestamp
+        } : null,
+        // Device state (ignition, immobiliser, battery, etc.)
+        state: deviceState,
+        primary_device_id: primaryDevice?.id,
+        iot_devices: (asset.iot_devices || []).map(device => ({
+          id: device.id,
+          name: device.name,
+          device_id: device.device_id,
+          iot_type_code: device.iot_type_code,
+          connection_status: device.connection_status,
+          last_communication: device.last_communication,
+          is_primary: device.id === primaryDevice?.id,
+          location: device.location,
+          // Device-specific state
+          state: (device.state || []).reduce((acc, s) => {
+            acc[s.key] = {
+              value: s.value,
+              label: s.label,
+              observed: s.observed,
+              stale: s.stale,
+              writable: s.writable,
+              unit: s.unit,
+              updated_at: s.updated_at
+            };
+            return acc;
+          }, {})
+        }))
+      };
+    });
+
+    return { 
+      assets: mappedAssets, 
+      counts: result.counts,
+      total: result.total 
+    };
   } catch (error) {
     console.error('Error fetching assets from VoltCred:', error.message);
-    // Return empty array instead of throwing - allows graceful handling
-    return [];
+    // Return empty structure instead of throwing
+    return { assets: [], counts: null, total: 0 };
   }
 }
 

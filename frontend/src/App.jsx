@@ -95,6 +95,8 @@ function useDarkMode() {
 
 function useAssets(authenticatedFetch) {
   const [assets, setAssets]           = useState([]);
+  const [counts, setCounts]           = useState(null);
+  const [total, setTotal]             = useState(0);
   const [loading, setLoading]         = useState(true);
   const [error, setError]             = useState(null);
   const [permBlocked, setPermBlocked] = useState(false);
@@ -105,11 +107,15 @@ function useAssets(authenticatedFetch) {
       const res  = await authenticatedFetch('/api/assets');
       const data = await res.json();
       if (data.permissionBlocked) {
-        setPermBlocked(true); setAssets([]);
+        setPermBlocked(true); setAssets([]); setCounts(null); setTotal(0);
       } else if (!data.success) {
         throw new Error(data.error || "Failed to load assets");
       } else {
-        setAssets(data.assets || []); setPermBlocked(false); setError(null);
+        setAssets(data.assets || []); 
+        setCounts(data.counts || null);
+        setTotal(data.total || 0);
+        setPermBlocked(false); 
+        setError(null);
       }
       setLastFetched(new Date());
     } catch (err) {
@@ -117,7 +123,7 @@ function useAssets(authenticatedFetch) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [authenticatedFetch]);
 
   useEffect(() => {
     load();
@@ -125,7 +131,7 @@ function useAssets(authenticatedFetch) {
     return () => clearInterval(t);
   }, [load]);
 
-  return { assets, loading, error, permBlocked, lastFetched, reload: load };
+  return { assets, counts, total, loading, error, permBlocked, lastFetched, reload: load };
 }
 
 function useFilteredAssets(assets) {
