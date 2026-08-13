@@ -605,14 +605,21 @@ function TrackerTab({ assets, onCommand, commandStatus, lockState }) {
 }
 
 // ── DASHBOARD TAB ────────────────────────────────────────────────────────────
-function DashboardTab({ assets, permBlocked, onCommand, commandStatus, lockState }) {
-  const online  = assets.filter((a) => a.status === "moving" || a.status === "idle").length;
-  const offline = assets.length - online;
-  const { query, setQuery, status, setStatus, filtered } = useFilteredAssets(assets);
-  const positions = assets.filter((a) => a.location?.latitude && a.location?.longitude);
+function DashboardTab({ assets, counts, onCommand, commandStatus, lockState, permBlocked }) {
+  const [statusFilter, setStatusFilter] = useState('all');
+  const { query, setQuery, filtered: searchFiltered } = useFilteredAssets(assets);
+  
+  // Apply status filter on top of search
+  const filtered = useMemo(() => {
+    if (statusFilter === 'all') return searchFiltered;
+    return searchFiltered.filter(a => a.status === statusFilter);
+  }, [searchFiltered, statusFilter]);
+  
+  const positions = filtered.filter((a) => a.location?.latitude && a.location?.longitude);
 
   const getIcon = (a) => {
-    if (a.status === "moving" || a.status === "idle") return ICON_MOVING;
+    if (a.status === "moving") return ICON_MOVING;
+    if (a.status === "idle") return ICON_MOVING;
     if (a.status === "offline") return ICON_OFFLINE;
     return ICON_UNKNOWN;
   };
@@ -645,11 +652,61 @@ function DashboardTab({ assets, permBlocked, onCommand, commandStatus, lockState
 
   return (
     <>
+      {/* Status Filter Chips with Server Counts */}
+      {counts && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+          <button 
+            className={`status-chip ${statusFilter === 'all' ? 'status-chip-active' : ''}`}
+            onClick={() => setStatusFilter('all')}
+            style={{ padding: '8px 16px', borderRadius: 20, border: '1px solid var(--border2)', background: statusFilter === 'all' ? 'var(--accent)' : 'var(--bg3)', color: statusFilter === 'all' ? '#fff' : 'var(--text)', cursor: 'pointer', fontSize: 13, fontWeight: 500 }}
+          >
+            All ({counts.total})
+          </button>
+          <button 
+            className={`status-chip ${statusFilter === 'moving' ? 'status-chip-active' : ''}`}
+            onClick={() => setStatusFilter('moving')}
+            style={{ padding: '8px 16px', borderRadius: 20, border: '1px solid var(--border2)', background: statusFilter === 'moving' ? '#22D37A' : 'var(--bg3)', color: statusFilter === 'moving' ? '#fff' : 'var(--text)', cursor: 'pointer', fontSize: 13, fontWeight: 500 }}
+          >
+            🚀 Moving ({counts.moving})
+          </button>
+          <button 
+            className={`status-chip ${statusFilter === 'idle' ? 'status-chip-active' : ''}`}
+            onClick={() => setStatusFilter('idle')}
+            style={{ padding: '8px 16px', borderRadius: 20, border: '1px solid var(--border2)', background: statusFilter === 'idle' ? '#3B82F6' : 'var(--bg3)', color: statusFilter === 'idle' ? '#fff' : 'var(--text)', cursor: 'pointer', fontSize: 13, fontWeight: 500 }}
+          >
+            ⏸️ Idle ({counts.idle})
+          </button>
+          <button 
+            className={`status-chip ${statusFilter === 'stopped' ? 'status-chip-active' : ''}`}
+            onClick={() => setStatusFilter('stopped')}
+            style={{ padding: '8px 16px', borderRadius: 20, border: '1px solid var(--border2)', background: statusFilter === 'stopped' ? '#F59E0B' : 'var(--bg3)', color: statusFilter === 'stopped' ? '#fff' : 'var(--text)', cursor: 'pointer', fontSize: 13, fontWeight: 500 }}
+          >
+            🛑 Stopped ({counts.stopped})
+          </button>
+          <button 
+            className={`status-chip ${statusFilter === 'offline' ? 'status-chip-active' : ''}`}
+            onClick={() => setStatusFilter('offline')}
+            style={{ padding: '8px 16px', borderRadius: 20, border: '1px solid var(--border2)', background: statusFilter === 'offline' ? '#EF4444' : 'var(--bg3)', color: statusFilter === 'offline' ? '#fff' : 'var(--text)', cursor: 'pointer', fontSize: 13, fontWeight: 500 }}
+          >
+            📡 Offline ({counts.offline})
+          </button>
+          {counts.untracked > 0 && (
+            <button 
+              className={`status-chip ${statusFilter === 'untracked' ? 'status-chip-active' : ''}`}
+              onClick={() => setStatusFilter('untracked')}
+              style={{ padding: '8px 16px', borderRadius: 20, border: '1px solid var(--border2)', background: statusFilter === 'untracked' ? '#6B7280' : 'var(--bg3)', color: statusFilter === 'untracked' ? '#fff' : 'var(--text)', cursor: 'pointer', fontSize: 13, fontWeight: 500 }}
+            >
+              🔍 No Device ({counts.untracked})
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="cards">
-        <div className="card"><span className="card-label">Total Assets</span><span className="card-value">{assets.length}</span></div>
-        <div className="card card-online-tone"><span className="card-label">Online</span><span className="card-value">{online}</span></div>
-        <div className="card card-offline-tone"><span className="card-label">Offline</span><span className="card-value">{offline}</span></div>
-        <div className="card"><span className="card-label">Data Source</span><span className="card-value-sm">VoltCred GraphQL</span></div>
+        <div className="card"><span className="card-label">Showing</span><span className="card-value">{filtered.length}</span></div>
+        <div className="card card-online-tone"><span className="card-label">Online</span><span className="card-value">{counts?.moving + counts?.idle || 0}</span></div>
+        <div className="card card-offline-tone"><span className="card-label">Offline</span><span className="card-value">{counts?.offline || 0}</span></div>
+        <div className="card"><span className="card-label">GPS Fixes</span><span className="card-value">{positions.length}</span></div>
       </div>
 
       <div className="map-box">
@@ -659,38 +716,89 @@ function DashboardTab({ assets, permBlocked, onCommand, commandStatus, lockState
             <Marker key={a.id} position={[a.location.latitude, a.location.longitude]} icon={getIcon(a)}>
               <Popup>
                 <div className="map-popup">
-                  <strong>{a.name}</strong>
+                  <strong>{a.license_plate || a.name}</strong>
+                  {a.operator_name && <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>👤 {a.operator_name}</div>}
+                  {a.model && <div style={{ fontSize: 12, color: 'var(--text3)' }}>🚗 {a.model}</div>}
                   <span className={`popup-status ${a.status === "moving" ? "popup-online" : "popup-offline"}`}>{a.status}</span>
                   <div className="popup-row"><span>📍</span><span>{a.location.latitude.toFixed(5)}, {a.location.longitude.toFixed(5)}</span></div>
+                  {a.location.speed && <div className="popup-row"><span>🏎️</span><span>{a.location.speed.toFixed(1)} km/h</span></div>}
+                  {a.state?.ignition && <div className="popup-row"><span>🔥</span><span>Ignition: {a.state.ignition.value ? 'ON' : 'OFF'}</span></div>}
+                  {a.state?.soc && <div className="popup-row"><span>🔋</span><span>Battery: {a.state.soc.value}%</span></div>}
                 </div>
               </Popup>
             </Marker>
           ))}
         </MapContainer>
-        {positions.length === 0 && assets.length > 0 && (
-          <div className="map-empty-note">No GPS coordinates reported yet.</div>
+        {positions.length === 0 && filtered.length > 0 && (
+          <div className="map-empty-note">No GPS coordinates reported for filtered vehicles.</div>
         )}
       </div>
 
       <div className="panel" style={{ marginTop: 22 }}>
-        <div className="panel-head"><h2>Vehicle list</h2></div>
-        <SearchFilterBar query={query} onQuery={setQuery} status={status} onStatus={setStatus} count={filtered.length} total={assets.length} />
+        <div className="panel-head">
+          <h2>Vehicle list ({filtered.length})</h2>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <input 
+              className="search-input" 
+              type="text"
+              placeholder="Search by name, plate, operator..."
+              value={query} 
+              onChange={(e) => setQuery(e.target.value)}
+              style={{ width: 300 }}
+            />
+          </div>
+        </div>
         {filtered.length === 0 ? <p className="muted" style={{ marginTop: 14 }}>No vehicles match.</p> : (
           <div className="vehicle-table">
             <div className="vt-row vt-head">
-              <span>Name / IMEI</span><span>Status</span><span>Type</span><span>Devices</span><span>Last comm.</span>
+              <span>Vehicle</span><span>Operator</span><span>Status</span><span>State</span><span>Location</span>
             </div>
             {filtered.map((a) => {
               const isOnline = a.status === "moving" || a.status === "idle";
-              const devices  = a.iot_devices || [];
-              const lastComm = devices.map((d) => d.last_communication).filter(Boolean).sort().pop();
+              const ignition = a.state?.ignition;
+              const immobiliser = a.state?.immobiliser;
+              const soc = a.state?.soc;
+              const staleLocation = a.location && a.state?.ignition?.stale;
+              
               return (
                 <div className="vt-row" key={a.id}>
-                  <span className="vt-name">{a.name}</span>
+                  <span className="vt-name">
+                    <div style={{ fontWeight: 600 }}>{a.license_plate || a.name}</div>
+                    {a.model && <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>{a.model}</div>}
+                  </span>
+                  <span style={{ fontSize: 13 }}>{a.operator_name || '—'}</span>
                   <span className={`status-pill ${isOnline ? "pill-online" : "pill-offline"}`}>{a.status || "unknown"}</span>
-                  <span>{a.asset_type || "—"}</span>
-                  <span>{devices.length}</span>
-                  <span>{fmtTime(lastComm) || "Never"}</span>
+                  <span style={{ fontSize: 12, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {ignition && (
+                      <span title={`Ignition ${ignition.value ? 'ON' : 'OFF'}${ignition.stale ? ' (stale)' : ''}`}>
+                        {ignition.value ? '🔥' : '❄️'}
+                      </span>
+                    )}
+                    {immobiliser && (
+                      <span title={`${immobiliser.value ? 'Locked' : 'Unlocked'}${immobiliser.observed ? '' : ' (unconfirmed)'}`}>
+                        {immobiliser.value ? '🔒' : '🔓'}
+                        {!immobiliser.observed && <span style={{ color: '#F59E0B' }}>⏳</span>}
+                      </span>
+                    )}
+                    {soc && (
+                      <span title={`Battery: ${soc.value}%`}>
+                        🔋{soc.value}%
+                      </span>
+                    )}
+                    {a.location?.speed > 0 && (
+                      <span title={`Speed: ${a.location.speed.toFixed(1)} km/h`}>
+                        🏎️{a.location.speed.toFixed(0)}
+                      </span>
+                    )}
+                  </span>
+                  <span style={{ fontSize: 12 }}>
+                    {a.location ? (
+                      <span style={{ opacity: staleLocation ? 0.5 : 1 }}>
+                        {a.location.address?.substring(0, 40) || `${a.location.latitude.toFixed(4)}, ${a.location.longitude.toFixed(4)}`}
+                        {staleLocation && <span style={{ color: '#F59E0B', marginLeft: 4 }} title="GPS data is stale">⚠️</span>}
+                      </span>
+                    ) : '—'}
+                  </span>
                 </div>
               );
             })}
@@ -2273,7 +2381,7 @@ export default function App() {
     localStorage.setItem('vehicleLockState', JSON.stringify(lockState));
   }, [lockState]);
 
-  const { assets, loading, error, permBlocked, lastFetched, reload } = useAssets(authenticatedFetch);
+  const { assets, counts, total, loading, error, permBlocked, lastFetched, reload } = useAssets(authenticatedFetch);
   const relativeTime = useRelativeTime(lastFetched);
   
   // Show loading state while checking authentication
@@ -2384,7 +2492,7 @@ export default function App() {
 
         {error && !permBlocked && <div className="error-banner">{error}</div>}
 
-        {activeTab === "dashboard" && <DashboardTab assets={assets} permBlocked={permBlocked} onCommand={requestCommand} commandStatus={commandStatus} lockState={lockState} />}
+        {activeTab === "dashboard" && <DashboardTab assets={assets} counts={counts} permBlocked={permBlocked} onCommand={requestCommand} commandStatus={commandStatus} lockState={lockState} />}
         {activeTab === "tracker"   && <TrackerTab   assets={assets} onCommand={requestCommand} commandStatus={commandStatus} lockState={lockState} />}
         {activeTab === "vehicles"  && <VehiclesTab  assets={assets} permBlocked={permBlocked} loading={loading} onCommand={requestCommand} commandStatus={commandStatus} lockState={lockState} />}
         {activeTab === "commands"  && <CommandsTab  assets={assets} authenticatedFetch={authenticatedFetch} />}
