@@ -721,9 +721,9 @@ function DashboardTab({ assets, counts, onCommand, commandStatus, lockState, per
                   {a.model && <div style={{ fontSize: 12, color: 'var(--text3)' }}>🚗 {a.model}</div>}
                   <span className={`popup-status ${a.status === "moving" ? "popup-online" : "popup-offline"}`}>{a.status}</span>
                   <div className="popup-row"><span>📍</span><span>{a.location.latitude.toFixed(5)}, {a.location.longitude.toFixed(5)}</span></div>
-                  {a.location.speed && <div className="popup-row"><span>🏎️</span><span>{a.location.speed.toFixed(1)} km/h</span></div>}
-                  {a.state?.ignition && <div className="popup-row"><span>🔥</span><span>Ignition: {a.state.ignition.value ? 'ON' : 'OFF'}</span></div>}
-                  {a.state?.soc && <div className="popup-row"><span>🔋</span><span>Battery: {a.state.soc.value}%</span></div>}
+                  {a.location.speed > 0 && <div className="popup-row"><span>🏎️</span><span>{a.location.speed.toFixed(1)} km/h</span></div>}
+                  {a.state?.ignition && a.state.ignition.value !== null && <div className="popup-row"><span>🔥</span><span>Ignition: {a.state.ignition.value ? 'ON' : 'OFF'}</span></div>}
+                  {a.state?.soc && a.state.soc.value !== null && <div className="popup-row"><span>🔋</span><span>Battery: {a.state.soc.value}%</span></div>}
                 </div>
               </Popup>
             </Marker>
@@ -756,9 +756,10 @@ function DashboardTab({ assets, counts, onCommand, commandStatus, lockState, per
             {filtered.map((a) => {
               const isOnline = a.status === "moving" || a.status === "idle";
               const ignition = a.state?.ignition;
-              const immobiliser = a.state?.immobiliser;
-              const soc = a.state?.soc;
-              const staleLocation = a.location && a.state?.ignition?.stale;
+              const immobiliser = a.state?.immobiliser_status || a.state?.immobilizer_status;
+              const soc = a.state?.soc || a.state?.remaining_capacity;
+              const speed = a.location?.speed;
+              const staleLocation = a.location && a.location.timestamp && ((Date.now() / 1000) - a.location.timestamp > 3600);
               
               return (
                 <div className="vt-row" key={a.id}>
@@ -769,25 +770,25 @@ function DashboardTab({ assets, counts, onCommand, commandStatus, lockState, per
                   <span style={{ fontSize: 13 }}>{a.operator_name || '—'}</span>
                   <span className={`status-pill ${isOnline ? "pill-online" : "pill-offline"}`}>{a.status || "unknown"}</span>
                   <span style={{ fontSize: 12, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    {ignition && (
+                    {ignition && ignition.value !== null && (
                       <span title={`Ignition ${ignition.value ? 'ON' : 'OFF'}${ignition.stale ? ' (stale)' : ''}`}>
                         {ignition.value ? '🔥' : '❄️'}
                       </span>
                     )}
-                    {immobiliser && (
+                    {immobiliser && immobiliser.value !== null && (
                       <span title={`${immobiliser.value ? 'Locked' : 'Unlocked'}${immobiliser.observed ? '' : ' (unconfirmed)'}`}>
                         {immobiliser.value ? '🔒' : '🔓'}
                         {!immobiliser.observed && <span style={{ color: '#F59E0B' }}>⏳</span>}
                       </span>
                     )}
-                    {soc && (
-                      <span title={`Battery: ${soc.value}%`}>
-                        🔋{soc.value}%
+                    {soc && soc.value !== null && (
+                      <span title={`Battery: ${soc.value}${soc.unit || '%'}`}>
+                        🔋{soc.value}{soc.unit || '%'}
                       </span>
                     )}
-                    {a.location?.speed > 0 && (
-                      <span title={`Speed: ${a.location.speed.toFixed(1)} km/h`}>
-                        🏎️{a.location.speed.toFixed(0)}
+                    {speed > 0 && (
+                      <span title={`Speed: ${speed.toFixed(1)} km/h`}>
+                        🏎️{speed.toFixed(0)}
                       </span>
                     )}
                   </span>
