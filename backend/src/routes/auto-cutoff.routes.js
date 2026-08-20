@@ -389,30 +389,20 @@ router.post('/notify', verifyToken, isAdmin, async (req, res) => {
     const failedItems = results.filter((item) => !item.success);
 
     // Log notification to activity log
-    const recipients = targetRentals.map((rental, index) => {
-      const result = results[index];
-      return {
-        rentalId: rental.rentalId,
-        name: rental.riderName || 'Unknown',
-        phone: rental.riderPhone,
-        success: result?.success || false,
-        error: result?.error || null
-      };
-    });
+    const recipients = targetRentals.map((rental) => ({
+      rentalId: rental.rentalId,
+      name: rental.riderName || 'Unknown',
+      phone: rental.riderPhone
+    }));
 
-    await logNotification({
-      user: req.user.name,
-      role: req.user.role,
-      action: 'bulk_notify',
-      template: selectedTemplate,
-      templateDescription: template.description,
-      campaignId: template.campaignId,
-      totalRequested: results.length,
-      successCount,
-      failedCount: failedItems.length,
-      recipients,
-      timestamp: new Date().toISOString()
-    });
+    // Use correct signature: logNotification(user, recipients, templateName, campaignId, results)
+    logNotification(
+      req.user, 
+      recipients, 
+      selectedTemplate, 
+      template.campaignId, 
+      results
+    );
 
     console.log(`[Auto-Cutoff] Notification logged to activity: ${successCount}/${results.length} successful`);
 

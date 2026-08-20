@@ -226,10 +226,6 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
           <span className="dd-value">{fmtTime(device.last_communication) || "Never"}</span>
         </div>
         <div className="dd-field">
-          <span className="dd-label">Last update</span>
-          <span className="dd-value">{fmtTime(device.last_update) || "—"}</span>
-        </div>
-        <div className="dd-field">
           <span className="dd-label">Last known position</span>
           <span className="dd-value">
             {hasFix
@@ -554,9 +550,6 @@ function TrackerTab({ assets, onCommand, commandStatus, lockState }) {
                   <div className="ti-field"><span className="ti-label">Device Type</span>
                     <span className="ti-value">{primaryDevice.iot_type_code || "—"}</span>
                   </div>
-                  <div className="ti-field"><span className="ti-label">Last Update</span>
-                    <span className="ti-value">{fmtTime(primaryDevice.last_update) || "Never"}</span>
-                  </div>
                 </>
               )}
             </div>
@@ -761,17 +754,30 @@ function DashboardTab({ assets, counts, onCommand, commandStatus, lockState, per
               const speed = a.location?.speed;
               const staleLocation = a.location && a.location.timestamp && ((Date.now() / 1000) - a.location.timestamp > 3600);
               
+              // Fix vehicle name display - don't show "false" or IMEI as license plate
+              const displayName = (() => {
+                if (a.license_plate && a.license_plate !== 'false' && a.license_plate !== a.id && !/^\d{15}$/.test(a.license_plate)) {
+                  return a.license_plate;
+                }
+                if (a.name && a.name !== 'false' && !/^\d{15}$/.test(a.name)) {
+                  return a.name;
+                }
+                // Fallback to asset ID if both are IMEI or false
+                return `Asset #${a.id}`;
+              })();
+              
               return (
                 <div className="vt-row" key={a.id}>
                   <span className="vt-name">
-                    <div style={{ fontWeight: 600 }}>{a.license_plate || a.name}</div>
+                    <div style={{ fontWeight: 600 }}>{displayName}</div>
                     {a.model && <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>{a.model}</div>}
                   </span>
                   <span style={{ fontSize: 13 }}>{a.operator_name || '—'}</span>
                   <span className={`status-pill ${isOnline ? "pill-online" : "pill-offline"}`}>{a.status || "unknown"}</span>
                   <span style={{ fontSize: 12, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    {ignition && ignition.value !== null && (
-                      <span title={`Ignition ${ignition.value ? 'ON' : 'OFF'}${ignition.stale ? ' (stale)' : ''}`}>
+                    {/* Only show state if value is not null and observed */}
+                    {ignition && ignition.value !== null && ignition.observed && (
+                      <span title={`Ignition ${ignition.value ? 'ON' : 'OFF'}`}>
                         {ignition.value ? '🔥' : '❄️'}
                       </span>
                     )}
@@ -781,13 +787,13 @@ function DashboardTab({ assets, counts, onCommand, commandStatus, lockState, per
                         {!immobiliser.observed && <span style={{ color: '#F59E0B' }}>⏳</span>}
                       </span>
                     )}
-                    {soc && soc.value !== null && (
+                    {soc && soc.value !== null && soc.observed && (
                       <span title={`Battery: ${soc.value}${soc.unit || '%'}`}>
                         🔋{soc.value}{soc.unit || '%'}
                       </span>
                     )}
                     {speed > 0 && (
-                      <span title={`Speed: ${speed.toFixed(1)} km/h`}>
+                      <span title={`Current speed: ${speed.toFixed(1)} km/h`}>
                         🏎️{speed.toFixed(0)}
                       </span>
                     )}
@@ -796,7 +802,7 @@ function DashboardTab({ assets, counts, onCommand, commandStatus, lockState, per
                     {a.location ? (
                       <span style={{ opacity: staleLocation ? 0.5 : 1 }}>
                         {a.location.address?.substring(0, 40) || `${a.location.latitude.toFixed(4)}, ${a.location.longitude.toFixed(4)}`}
-                        {staleLocation && <span style={{ color: '#F59E0B', marginLeft: 4 }} title="GPS data is stale">⚠️</span>}
+                        {staleLocation && <span style={{ color: '#F59E0B', marginLeft: 4 }} title="GPS data older than 1 hour">⚠️</span>}
                       </span>
                     ) : '—'}
                   </span>
