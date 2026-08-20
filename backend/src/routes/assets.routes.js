@@ -1,22 +1,123 @@
 const express = require("express");
 const router = express.Router();
 const { getAssets } = require("../services/voltcred.service");
+const { getAllRentals } = require("../services/renewals.service");
+const fs = require('fs');
+const path = require('path');
 // const { verifyToken } = require("../middleware/auth.middleware");
+
+// Load IMEI to Vehicle ID mapping
+const MAPPING_FILE = path.join(__dirname, '..', '..', 'data', 'vehicle-imei-mapping.json');
+let imeiMapping = {};
+
+function loadImeiMapping() {
+  try {
+    if (fs.existsSync(MAPPING_FILE)) {
+      const data = fs.readFileSync(MAPPING_FILE, 'utf8');
+      imeiMapping = JSON.parse(data);
+      // Remove comment fields
+      delete imeiMapping._comment;
+      delete imeiMapping._instructions;
+      delete imeiMapping._example;
+      console.log(`[Assets] Loaded ${Object.keys(imeiMapping).length} IMEI mappings`);
+    }
+  } catch (error) {
+    console.warn('[Assets] Could not load IMEI mapping:', error.message);
+  }
+}
+
+// Load mapping on startup
+loadImeiMapping();
 
 // GET /api/assets
 // Returns vehicle list from VoltCred GraphQL vehicles query.
+// Enriched with operator names from Optimotion rental data.
 // Returns empty array with success=true if no vehicles found.
 router.get("/", async (req, res) => {
   try {
     const result = await getAssets();
     
+    // Try to match with Optimotion rental data to get operator names
+    let enrichedAssets = result.assets || [];
+    
+    try {
+      const rentals = await getAllRentals();
+      
+      if (rentals && rentals.length > 0) {
+        console.log(`[Assets] Matching ${enrichedAssets.length} VoltCred assets with ${rentals.length} Optimotion rentals`);
+        
+        // Create a map of vehicle ID -> rental info
+        const rentalMap = {};
+        rentals.forEach(rental => {
+          if (rental.vehicleId) {
+            rentalMap[rental.vehicleId.toUpperCase().trim()] = rental;
+          }
+        });
+        
+        // Enrich assets with rental data
+        enrichedAssets = enrichedAssets.map(asset => {
+          // Step 1: Check if asset name is already a vehicle ID (e.g., "SL217030")
+          let vehicleKey = (asset.name || '').toUpperCase().trim();
+          let rental = rentalMap[vehicleKey];
+          
+          // Step 2: If not found, check license_plate
+          if (!rental && asset.license_plate) {
+            vehicleKey = asset.license_plate.toUpperCase().trim();
+            rental = rentalMap[vehicleKey];
+          }
+          
+          // Step 3: If still not found, try IMEI mapping
+          if (!rental) {
+            const imei = asset.name || asset.license_plate || '';
+            const mappedVehicleId = imeiMapping[imei];
+            
+            if (mappedVehicleId && mappedVehicleId !== 'UNKNOWN') {
+              vehicleKey = mappedVehicleId.toUpperCase().trim();
+              rental = rentalMap[vehicleKey];
+              
+              if (rental) {
+                console.log(`[Assets] ✓ Matched IMEI ${imei} → ${mappedVehicleId} → ${rental.riderName}`);
+              }
+            }
+          }
+          
+          if (rental) {
+            if (!rental.matched_from_optimotion) {
+              console.log(`[Assets] ✓ Matched ${asset.name} with rental for ${rental.riderName}`);
+            }
+            
+            return {
+              ...asset,
+              name: imeiMapping[asset.name] || asset.name, // Show vehicle ID instead of IMEI if mapped
+              operator_name: rental.riderName || asset.operator_name,
+              operator_phone: rental.riderPhone,
+              rental_status: rental.status,
+              rental_id: rental.rentalId,
+              rental_overdue_days: rental.overdueDays,
+              rental_hub: rental.hub,
+              rental_due_date: rental.dueDate,
+              matched_from_optimotion: true
+            };
+          }
+          
+          return asset;
+        });
+        
+        const matchedCount = enrichedAssets.filter(a => a.matched_from_optimotion).length;
+        console.log(`[Assets] Matched ${matchedCount}/${enrichedAssets.length} assets with Optimotion rental data`);
+      }
+    } catch (rentalError) {
+      console.warn('[Assets] Could not fetch rental data for matching:', rentalError.message);
+      // Continue without rental enrichment
+    }
+    
     // Return success with counts and total
     res.json({ 
       success: true, 
-      assets: result.assets || [],
+      assets: enrichedAssets,
       counts: result.counts || null,
       total: result.total || 0,
-      message: (result.assets || []).length === 0 
+      message: (enrichedAssets || []).length === 0 
         ? 'No vehicles found. Contact VoltCred to add vehicles to your account (hello@optimotion.in).' 
         : undefined
     });

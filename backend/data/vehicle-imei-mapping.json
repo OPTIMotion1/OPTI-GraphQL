@@ -1,0 +1,16 @@
+{
+  "_comment": "Maps VoltCred IMEI numbers to Optimotion vehicle registration numbers",
+  "_instructions": "Add entries as: 'IMEI': 'VEHICLE_ID'",
+  "_example": "864540080383862": "SL217030",
+  
+  "864540080383862": "SL217030",
+  "864540080665904": "UNKNOWN",
+  "864540080668049": "UNKNOWN",
+  "864540080667991": "UNKNOWN",
+  "864540080671050": "UNKNOWN",
+  "864540080667363": "UNKNOWN",
+  "864540080666142": "UNKNOWN",
+  "864540080671084": "UNKNOWN",
+  "864540080671035": "UNKNOWN",
+  "864540080668015": "UNKNOWN"
+}
