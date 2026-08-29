@@ -41,7 +41,8 @@ router.get("/", async (req, res) => {
     let enrichedAssets = result.assets || [];
     
     try {
-      const rentals = await getAllRentals();
+      const optimotionEnabled = process.env.OPTIMOTION_RENEWALS_FETCH_ENABLED !== 'false';
+      const rentals = optimotionEnabled ? await getAllRentals() : [];
       
       if (rentals && rentals.length > 0) {
         console.log(`[Assets] Matching ${enrichedAssets.length} VoltCred assets with ${rentals.length} Optimotion rentals`);

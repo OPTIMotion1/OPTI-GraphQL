@@ -6,6 +6,7 @@ const RENEWALS_API_PASSWORD = process.env.RENEWALS_API_PASSWORD;
 const RENEWALS_API_TOKEN = process.env.RENEWALS_API_TOKEN;
 const RENEWALS_API_COOKIE = process.env.RENEWALS_API_COOKIE || process.env.RENEWALS_SESSION_COOKIE;
 const AUTO_CUTOFF_USE_DASHBOARD = process.env.AUTO_CUTOFF_USE_DASHBOARD === 'true';
+const OPTIMOTION_RENEWALS_FETCH_ENABLED = process.env.OPTIMOTION_RENEWALS_FETCH_ENABLED !== 'false';
 
 // Session token cache
 let sessionToken = null;
@@ -228,6 +229,11 @@ async function loginToRenewalsAPI() {
  * @returns {Promise<Array>} List of renewals with vehicle and due date info
  */
 async function fetchRenewals() {
+  if (!OPTIMOTION_RENEWALS_FETCH_ENABLED) {
+    console.log('[fetchRenewals] Optimotion renewals fetch is disabled. Returning empty array.');
+    return [];
+  }
+
   try {
     const headers = buildAuthHeaders();
 
