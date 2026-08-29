@@ -222,8 +222,23 @@ async function executeCutoffForRental(rental, assets) {
  */
 async function checkAndExecuteAutoCutoff(minOverdueDays = 1) {
   const startTime = Date.now();
+  const dashboardFetchEnabled = process.env.AUTO_CUTOFF_USE_DASHBOARD === 'true';
   
   console.log(`Starting auto-cutoff check for rentals ${minOverdueDays}+ days overdue...`);
+  
+  if (!dashboardFetchEnabled) {
+    console.log('[Auto-Cutoff] Dashboard fetch disabled via AUTO_CUTOFF_USE_DASHBOARD=false; skipping auto-cutoff sync.');
+    return {
+      success: true,
+      message: 'Auto-cutoff dashboard sync is disabled',
+      totalOverdue: 0,
+      processed: 0,
+      successful: 0,
+      failed: 0,
+      skipped: 0,
+      duration: Date.now() - startTime
+    };
+  }
   
   try {
     // Step 1: Fetch overdue rentals

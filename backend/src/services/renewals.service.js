@@ -5,6 +5,7 @@ const RENEWALS_API_USERNAME = process.env.RENEWALS_API_USERNAME;
 const RENEWALS_API_PASSWORD = process.env.RENEWALS_API_PASSWORD;
 const RENEWALS_API_TOKEN = process.env.RENEWALS_API_TOKEN;
 const RENEWALS_API_COOKIE = process.env.RENEWALS_API_COOKIE || process.env.RENEWALS_SESSION_COOKIE;
+const AUTO_CUTOFF_USE_DASHBOARD = process.env.AUTO_CUTOFF_USE_DASHBOARD === 'true';
 
 // Session token cache
 let sessionToken = null;
@@ -495,6 +496,11 @@ async function getAllRentals() {
  */
 async function getOverdueRentals(minOverdueDays = 1) {
   try {
+    if (!AUTO_CUTOFF_USE_DASHBOARD) {
+      console.log('[getOverdueRentals] Auto-cutoff dashboard fetch is disabled. Returning no overdue rentals.');
+      return [];
+    }
+
     const renewals = await fetchRenewals();
     
     // Debug: Log first 2 renewals to see actual field names
