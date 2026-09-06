@@ -196,7 +196,32 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
   const hasFix = lat && lng;
   const isBms  = device.iot_type_code === "battery_bms";
   const availableCommands = getCommandsForDevice(device.iot_type_code);
-  const isLocked = lockState?.[device.device_id] === 'locked';
+  
+  // Check for pending lock/unlock commands (for gt06 devices that can't report status)
+  const pendingCommands = JSON.parse(localStorage.getItem('pendingCommands') || '{}');
+  const pendingCmd = pendingCommands[device.device_id];
+  
+  // Auto-expire pending commands after 20 minutes
+  let isPendingLock = false;
+  let isPendingUnlock = false;
+  let pendingMinutesAgo = 0;
+  
+  if (pendingCmd) {
+    pendingMinutesAgo = Math.floor((Date.now() - pendingCmd.timestamp) / 1000 / 60);
+    
+    if (pendingMinutesAgo < 20) {
+      isPendingLock = pendingCmd.command === 'engine_cutoff';
+      isPendingUnlock = pendingCmd.command === 'engine_restore';
+    } else {
+      // Expired - remove from storage
+      delete pendingCommands[device.device_id];
+      localStorage.setItem('pendingCommands', JSON.stringify(pendingCommands));
+    }
+  }
+  
+  // Determine lock state: VoltCred API (if available) OR pending state
+  const isLocked = lockState?.[device.device_id] === 'locked' || isPendingLock;
+  const isUnlocked = !isLocked || isPendingUnlock;
 
   return (
     <div className="device-detail">
@@ -208,9 +233,23 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
             <span className={`tag ${isBms ? "tag-bms" : "tag-gps"}`}>{device.iot_type_code}</span>
           )}
           {!isBms && (
-            <span className={`tag ${isLocked ? "tag-locked" : "tag-unlocked"}`}>
-              {isLocked ? "🔒 Locked" : "🔓 Unlocked"}
-            </span>
+            <>
+              {isPendingLock && (
+                <span className="tag tag-pending" style={{ background: '#FFA500', color: 'white', animation: 'pulse 2s infinite' }}>
+                  ⏳ Lock Pending ({pendingMinutesAgo}m ago)
+                </span>
+              )}
+              {isPendingUnlock && (
+                <span className="tag tag-pending" style={{ background: '#4CAF50', color: 'white', animation: 'pulse 2s infinite' }}>
+                  ⏳ Unlock Pending ({pendingMinutesAgo}m ago)
+                </span>
+              )}
+              {!isPendingLock && !isPendingUnlock && (
+                <span className={`tag ${isLocked ? "tag-locked" : "tag-unlocked"}`}>
+                  {isLocked ? "🔒 Locked" : "🔓 Unlocked"}
+                </span>
+              )}
+            </>
           )}
         </div>
         <span className={`conn-pill conn-${conn.tone}`}>
@@ -268,24 +307,38 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
         </div>
       </div>
       <div className="device-commands-full">
-        {isLocked ? (
-          // Only show Unlock when locked
-          <button
-            className="cmd-btn cmd-safe"
-            disabled={status?.state === "pending"}
-            title="Mobilize — restore the engine"
-            onClick={() => onCommand(device.id, device.id, 'engine_restore', device.device_id)}>
-            🔓 Unlock
-          </button>
+        {(isLocked || isPendingLock) ? (
+          // Show Unlock when locked OR when lock is pending
+          <>
+            <button
+              className="cmd-btn cmd-safe"
+              disabled={status?.state === "pending"}
+              title="Mobilize — restore the engine"
+              onClick={() => onCommand(device.id, device.id, 'engine_restore', device.device_id)}>
+              🔓 Unlock
+            </button>
+            {isPendingLock && (
+              <div style={{ fontSize: 11, color: '#FFA500', marginTop: 4 }}>
+                ⚠️ Lock command sent {pendingMinutesAgo}m ago. Wait {20 - pendingMinutesAgo}m more.
+              </div>
+            )}
+          </>
         ) : (
-          // Only show Lock when unlocked
-          <button
-            className="cmd-btn cmd-danger"
-            disabled={status?.state === "pending"}
-            title="Immobilize — cut the engine"
-            onClick={() => onCommand(device.id, device.id, 'engine_cutoff', device.device_id)}>
-            🔒 Lock
-          </button>
+          // Show Lock when unlocked OR when unlock is pending
+          <>
+            <button
+              className="cmd-btn cmd-danger"
+              disabled={status?.state === "pending"}
+              title="Immobilize — cut the engine"
+              onClick={() => onCommand(device.id, device.id, 'engine_cutoff', device.device_id)}>
+              🔒 Lock
+            </button>
+            {isPendingUnlock && (
+              <div style={{ fontSize: 11, color: '#4CAF50', marginTop: 4 }}>
+                ⚠️ Unlock command sent {pendingMinutesAgo}m ago. Wait {20 - pendingMinutesAgo}m more.
+              </div>
+            )}
+          </>
         )}
         {/* Always show Locate button */}
         <button
@@ -297,6 +350,18 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
         </button>
       </div>
       {status && status.state !== 'error' && <span className={`cmd-status cmd-${status.state}`}>{status.message}</span>}
+      {device.iot_type_code === 'gt06' && (isPendingLock || isPendingUnlock) && (
+        <div style={{ 
+          marginTop: 8, 
+          padding: 8, 
+          background: 'rgba(255,165,0,0.1)', 
+          borderRadius: 4, 
+          fontSize: 11,
+          color: 'var(--text3)'
+        }}>
+          ℹ️ gt06 devices take 10-20 minutes to execute commands (sleep cycle). Vehicle will {isPendingLock ? 'lock' : 'unlock'} automatically.
+        </div>
+      )}
     </div>
   );
 }
@@ -2430,6 +2495,22 @@ export default function App() {
           message: `${meta.label} command sent. Refreshing to confirm status...` 
         } 
       }));
+      
+      // For gt06 devices, track pending lock/unlock state (cannot verify from API)
+      if (commandType === 'engine_cutoff' || commandType === 'engine_restore') {
+        const pendingState = {
+          command: commandType,
+          timestamp: Date.now(),
+          deviceImei: deviceImei
+        };
+        
+        // Store pending command with 20-minute expiry
+        const pendingCommands = JSON.parse(localStorage.getItem('pendingCommands') || '{}');
+        pendingCommands[deviceImei] = pendingState;
+        localStorage.setItem('pendingCommands', JSON.stringify(pendingCommands));
+        
+        console.log(`[Command] Tracked pending ${commandType} for ${deviceImei}`);
+      }
       
       // Refresh after 3 seconds to get real lock state from VoltCred API
       setTimeout(() => {
