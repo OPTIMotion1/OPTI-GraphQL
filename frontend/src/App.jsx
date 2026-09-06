@@ -2372,23 +2372,26 @@ export default function App() {
   const [pendingConfirm, setPendingConfirm] = useState(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [dark, setDark] = useDarkMode();
-  
-  // Lock state management - persisted in localStorage
-  const [lockState, setLockState] = useState(() => {
-    try {
-      const saved = localStorage.getItem('vehicleLockState');
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
-  });
-  
-  // Save lock state to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem('vehicleLockState', JSON.stringify(lockState));
-  }, [lockState]);
 
   const { assets, counts, total, loading, error, permBlocked, lastFetched, reload } = useAssets(authenticatedFetch);
+  
+  // Build lock state from VoltCred API immobilizer status (not from local commands!)
+  const lockState = useMemo(() => {
+    const state = {};
+    assets.forEach(asset => {
+      asset.iot_devices?.forEach(device => {
+        const immo = asset.state?.immobiliser_status || asset.state?.immobilizer_status;
+        // Only trust VoltCred API - don't assume based on commands sent
+        if (immo && immo.value === true && immo.observed === true) {
+          state[device.device_id] = 'locked';
+        } else if (immo && immo.value === false && immo.observed === true) {
+          state[device.device_id] = 'unlocked';
+        }
+        // If immobilizer is null or unobserved, don't show lock state at all
+      });
+    });
+    return state;
+  }, [assets]);
   const relativeTime = useRelativeTime(lastFetched);
   
   // Show loading state while checking authentication
@@ -2418,21 +2421,20 @@ export default function App() {
       const data = await res.json();
       if (!data.success) throw new Error(data.error);
       
-      // Update lock state
-      if (commandType === 'engine_cutoff' && deviceImei) {
-        setLockState(prev => ({ ...prev, [deviceImei]: 'locked' }));
-      } else if (commandType === 'engine_restore' && deviceImei) {
-        setLockState(prev => ({ ...prev, [deviceImei]: 'unlocked' }));
-      }
-      
       const meta = COMMAND_LABELS[commandType];
       setCommandStatus((p) => ({ 
         ...p, 
         [assetId]: { 
           state: "success", 
-          message: `${meta.label} command sent successfully` 
+          message: `${meta.label} command sent. Refreshing to confirm status...` 
         } 
       }));
+      
+      // Refresh after 3 seconds to get real lock state from VoltCred API
+      setTimeout(() => {
+        reload();
+        setCommandStatus((p) => ({ ...p, [assetId]: undefined }));
+      }, 3000);
     } catch (err) {
       setCommandStatus((p) => ({ 
         ...p, 
