@@ -66,6 +66,9 @@ router.get("/", async (req, res) => {
         
         // Enrich assets with rental data
         enrichedAssets = enrichedAssets.map(asset => {
+          // Log original asset name for debugging
+          const originalName = asset.name;
+          
           // Step 1: Check if asset name is already a vehicle ID (e.g., "SL217030")
           let vehicleKey = (asset.name || '').toUpperCase().trim();
           let rental = rentalMap[vehicleKey];
@@ -113,12 +116,17 @@ router.get("/", async (req, res) => {
           // Even if no rental found, still map the vehicle name from IMEI
           const mappedName = imeiMapping[asset.name];
           if (mappedName && mappedName !== 'UNKNOWN') {
+            console.log(`[Assets] ✓ Mapping vehicle name: ${asset.name} → ${mappedName}`);
             return {
               ...asset,
               name: mappedName
             };
           }
           
+          // No mapping found, return as-is
+          if (originalName === asset.name) {
+            console.log(`[Assets] ⚠️  No mapping for: ${asset.name}`);
+          }
           return asset;
         });
         
