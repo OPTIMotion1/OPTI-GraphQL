@@ -127,7 +127,7 @@ function useAssets(authenticatedFetch) {
 
   useEffect(() => {
     load();
-    const t = setInterval(load, 5 * 60 * 1000);
+    const t = setInterval(load, 30 * 1000); // Refresh every 30 seconds (faster)
     return () => clearInterval(t);
   }, [load]);
 

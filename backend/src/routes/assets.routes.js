@@ -35,6 +35,13 @@ loadImeiMapping();
 // Returns empty array with success=true if no vehicles found.
 router.get("/", async (req, res) => {
   try {
+    // Prevent caching - force fresh data
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+    
     const result = await getAssets();
     
     // Try to match with Optimotion rental data to get operator names
