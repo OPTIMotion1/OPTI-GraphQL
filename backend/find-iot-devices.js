@@ -6,7 +6,7 @@ async function main() {
   try {
     console.log('\n🔍 Finding IOT Device Mappings');
     console.log('='.repeat(60));
-    console.log('Looking for: 80376247 and 80671084\n');
+    console.log('Looking for: 80376247, 80671084, 80377468\n');
 
     const result = await getAssets();
     const assets = result.assets || [];
@@ -19,7 +19,7 @@ async function main() {
     for (const asset of assets) {
       if (asset.iot_devices && asset.iot_devices.length > 0) {
         for (const device of asset.iot_devices) {
-          if (device.device_id.includes('80376247') || device.device_id.includes('80671084')) {
+          if (device.device_id.includes('80376247') || device.device_id.includes('80671084') || device.device_id.includes('80377468')) {
             matches.push({
               imei: device.device_id,
               deviceId: device.id,

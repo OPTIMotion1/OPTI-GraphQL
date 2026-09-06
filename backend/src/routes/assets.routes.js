@@ -50,9 +50,20 @@ router.get("/", async (req, res) => {
     
     const result = await getAssets();
     
-    // Try to match with Optimotion rental data to get operator names
-    let enrichedAssets = result.assets || [];
+    // FIRST: Apply IMEI mapping to ALL assets (before rental matching)
+    let enrichedAssets = (result.assets || []).map(asset => {
+      const mappedName = imeiMapping[asset.name];
+      if (mappedName && mappedName !== 'UNKNOWN') {
+        console.log(`[Assets] ✓ Mapping vehicle name: ${asset.name} → ${mappedName}`);
+        return {
+          ...asset,
+          name: mappedName
+        };
+      }
+      return asset;
+    });
     
+    // THEN: Try to match with Optimotion rental data to get operator names
     try {
       const optimotionEnabled = process.env.OPTIMOTION_RENEWALS_FETCH_ENABLED !== 'false';
       const rentals = optimotionEnabled ? await getAllRentals() : [];
@@ -70,10 +81,7 @@ router.get("/", async (req, res) => {
         
         // Enrich assets with rental data
         enrichedAssets = enrichedAssets.map(asset => {
-          // Log original asset name for debugging
-          const originalName = asset.name;
-          
-          // Step 1: Check if asset name is already a vehicle ID (e.g., "SL217030")
+          // Step 1: Check if asset name is already a vehicle ID (e.g., "SL217030", "J00011")
           let vehicleKey = (asset.name || '').toUpperCase().trim();
           let rental = rentalMap[vehicleKey];
           
@@ -83,29 +91,11 @@ router.get("/", async (req, res) => {
             rental = rentalMap[vehicleKey];
           }
           
-          // Step 3: If still not found, try IMEI mapping
-          if (!rental) {
-            const imei = asset.name || asset.license_plate || '';
-            const mappedVehicleId = imeiMapping[imei];
-            
-            if (mappedVehicleId && mappedVehicleId !== 'UNKNOWN') {
-              vehicleKey = mappedVehicleId.toUpperCase().trim();
-              rental = rentalMap[vehicleKey];
-              
-              if (rental) {
-                console.log(`[Assets] ✓ Matched IMEI ${imei} → ${mappedVehicleId} → ${rental.riderName}`);
-              }
-            }
-          }
-          
           if (rental) {
-            if (!rental.matched_from_optimotion) {
-              console.log(`[Assets] ✓ Matched ${asset.name} with rental for ${rental.riderName}`);
-            }
+            console.log(`[Assets] ✓ Matched ${asset.name} with rental for ${rental.riderName}`);
             
             return {
               ...asset,
-              name: imeiMapping[asset.name] || asset.name, // Show vehicle ID instead of IMEI if mapped
               operator_name: rental.riderName || asset.operator_name,
               operator_phone: rental.riderPhone,
               rental_status: rental.status,
@@ -117,20 +107,6 @@ router.get("/", async (req, res) => {
             };
           }
           
-          // Even if no rental found, still map the vehicle name from IMEI
-          const mappedName = imeiMapping[asset.name];
-          if (mappedName && mappedName !== 'UNKNOWN') {
-            console.log(`[Assets] ✓ Mapping vehicle name: ${asset.name} → ${mappedName}`);
-            return {
-              ...asset,
-              name: mappedName
-            };
-          }
-          
-          // No mapping found, return as-is
-          if (originalName === asset.name) {
-            console.log(`[Assets] ⚠️  No mapping for: ${asset.name}`);
-          }
           return asset;
         });
         
