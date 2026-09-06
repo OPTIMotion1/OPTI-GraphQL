@@ -29,8 +29,9 @@ test-*.ps1
 test-*.txt
 *.test.js
 
-# Data files
+# Data files (allow vehicle mapping)
 data/*.json
+!data/vehicle-imei-mapping.json
 !data/.gitkeep
 
 # Temporary files
