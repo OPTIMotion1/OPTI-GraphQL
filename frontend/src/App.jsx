@@ -2411,7 +2411,8 @@ export default function App() {
   const confirmCommand = async () => {
     const { deviceId, assetId, commandType, deviceImei } = pendingConfirm;
     setPendingConfirm(null);
-    setCommandStatus((p) => ({ ...p, [assetId]: { state: "pending", message: "Sending…" } }));
+    // Use deviceId as key so it matches the lookup in DeviceRow
+    setCommandStatus((p) => ({ ...p, [deviceId]: { state: "pending", message: "Sending…" } }));
     
     try {
       const res  = await authenticatedFetch('/api/command', {
@@ -2424,7 +2425,7 @@ export default function App() {
       const meta = COMMAND_LABELS[commandType];
       setCommandStatus((p) => ({ 
         ...p, 
-        [assetId]: { 
+        [deviceId]: { 
           state: "success", 
           message: `${meta.label} command sent. Refreshing to confirm status...` 
         } 
@@ -2433,12 +2434,12 @@ export default function App() {
       // Refresh after 3 seconds to get real lock state from VoltCred API
       setTimeout(() => {
         reload();
-        setCommandStatus((p) => ({ ...p, [assetId]: undefined }));
+        setCommandStatus((p) => ({ ...p, [deviceId]: undefined }));
       }, 3000);
     } catch (err) {
       setCommandStatus((p) => ({ 
         ...p, 
-        [assetId]: { 
+        [deviceId]: { 
           state: "error", 
           message: "Failed — " + err.message 
         } 
