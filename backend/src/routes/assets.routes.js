@@ -18,11 +18,13 @@ function loadImeiMapping() {
       // Remove comment fields
       delete imeiMapping._comment;
       delete imeiMapping._instructions;
-      delete imeiMapping._example;
-      console.log(`[Assets] Loaded ${Object.keys(imeiMapping).length} IMEI mappings`);
+      console.log(`[Assets] ✅ Loaded ${Object.keys(imeiMapping).length} IMEI mappings`);
+      console.log(`[Assets] Mappings: ${Object.entries(imeiMapping).filter(([k, v]) => v !== 'UNKNOWN').map(([k, v]) => `${k.slice(-6)}→${v}`).join(', ')}`);
+    } else {
+      console.warn('[Assets] ⚠️  IMEI mapping file not found at:', MAPPING_FILE);
     }
   } catch (error) {
-    console.warn('[Assets] Could not load IMEI mapping:', error.message);
+    console.error('[Assets] ❌ Could not load IMEI mapping:', error.message);
   }
 }
 
