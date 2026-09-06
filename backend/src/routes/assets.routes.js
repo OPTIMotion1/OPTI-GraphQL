@@ -18,17 +18,21 @@ function loadImeiMapping() {
       // Remove comment fields
       delete imeiMapping._comment;
       delete imeiMapping._instructions;
-      console.log(`[Assets] ✅ Loaded ${Object.keys(imeiMapping).length} IMEI mappings`);
-      console.log(`[Assets] Mappings: ${Object.entries(imeiMapping).filter(([k, v]) => v !== 'UNKNOWN').map(([k, v]) => `${k.slice(-6)}→${v}`).join(', ')}`);
+      console.log(`[Assets] ✅ Loaded ${Object.keys(imeiMapping).length} IMEI mappings from: ${MAPPING_FILE}`);
+      console.log(`[Assets] Mapped vehicles: ${Object.entries(imeiMapping).filter(([k, v]) => v !== 'UNKNOWN').map(([k, v]) => `${k.slice(-6)}→${v}`).join(', ')}`);
     } else {
-      console.warn('[Assets] ⚠️  IMEI mapping file not found at:', MAPPING_FILE);
+      console.error('[Assets] ❌ IMEI mapping file NOT FOUND at:', MAPPING_FILE);
+      console.error('[Assets] Current directory:', __dirname);
+      console.error('[Assets] Computed path:', MAPPING_FILE);
     }
   } catch (error) {
     console.error('[Assets] ❌ Could not load IMEI mapping:', error.message);
+    console.error('[Assets] Stack:', error.stack);
   }
 }
 
-// Load mapping on startup
+// Load mapping on startup (force reload on every deploy)
+console.log('[Assets] Initializing IMEI mapping...');
 loadImeiMapping();
 
 // GET /api/assets
