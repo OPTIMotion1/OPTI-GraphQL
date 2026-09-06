@@ -110,6 +110,15 @@ router.get("/", async (req, res) => {
             };
           }
           
+          // Even if no rental found, still map the vehicle name from IMEI
+          const mappedName = imeiMapping[asset.name];
+          if (mappedName && mappedName !== 'UNKNOWN') {
+            return {
+              ...asset,
+              name: mappedName
+            };
+          }
+          
           return asset;
         });
         
