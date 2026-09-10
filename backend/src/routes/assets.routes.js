@@ -1,7 +1,6 @@
 const express = require("express");
 const router = express.Router();
 const { getAssets, getDeviceCommands } = require("../services/voltcred.service");
-const { getAllRentals } = require("../services/renewals.service");
 const fs = require('fs');
 const path = require('path');
 // const { verifyToken } = require("../middleware/auth.middleware");
@@ -85,61 +84,7 @@ router.get("/", async (req, res) => {
     
     enrichedAssets = await Promise.all(commandHistoryPromises);
     console.log(`[Assets] ✓ Command history fetched for all devices`);
-    
-    // AFTER: Try to match with Optimotion rental data to get operator names
-    try {
-      const optimotionEnabled = process.env.OPTIMOTION_RENEWALS_FETCH_ENABLED !== 'false';
-      const rentals = optimotionEnabled ? await getAllRentals() : [];
-      
-      if (rentals && rentals.length > 0) {
-        console.log(`[Assets] Matching ${enrichedAssets.length} VoltCred assets with ${rentals.length} Optimotion rentals`);
-        
-        // Create a map of vehicle ID -> rental info
-        const rentalMap = {};
-        rentals.forEach(rental => {
-          if (rental.vehicleId) {
-            rentalMap[rental.vehicleId.toUpperCase().trim()] = rental;
-          }
-        });
-        
-        // Enrich assets with rental data
-        enrichedAssets = enrichedAssets.map(asset => {
-          // Step 1: Check if asset name is already a vehicle ID (e.g., "SL217030", "J00011")
-          let vehicleKey = (asset.name || '').toUpperCase().trim();
-          let rental = rentalMap[vehicleKey];
-          
-          // Step 2: If not found, check license_plate
-          if (!rental && asset.license_plate) {
-            vehicleKey = asset.license_plate.toUpperCase().trim();
-            rental = rentalMap[vehicleKey];
-          }
-          
-          if (rental) {
-            console.log(`[Assets] ✓ Matched ${asset.name} with rental for ${rental.riderName}`);
-            
-            return {
-              ...asset,
-              operator_name: rental.riderName || asset.operator_name,
-              operator_phone: rental.riderPhone,
-              rental_status: rental.status,
-              rental_id: rental.rentalId,
-              rental_overdue_days: rental.overdueDays,
-              rental_hub: rental.hub,
-              rental_due_date: rental.dueDate,
-              matched_from_optimotion: true
-            };
-          }
-          
-          return asset;
-        });
-        
-        const matchedCount = enrichedAssets.filter(a => a.matched_from_optimotion).length;
-        console.log(`[Assets] Matched ${matchedCount}/${enrichedAssets.length} assets with Optimotion rental data`);
-      }
-    } catch (rentalError) {
-      console.warn('[Assets] Could not fetch rental data for matching:', rentalError.message);
-      // Continue without rental enrichment
-    }
+    console.log(`[Assets] ✓ Returning ${enrichedAssets.length} assets with ONLY VoltCred data (no rental integration)`)
     
     // Return success with counts and total
     res.json({ 

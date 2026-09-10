@@ -305,6 +305,107 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
             </div>
           )}
         </div>
+        
+        {/* Display ALL VoltCred Device State */}
+        {asset.state && Object.keys(asset.state).length > 0 && (
+          <>
+            {/* Speed */}
+            {asset.state.speed && asset.state.speed.observed && (
+              <div className="dd-field">
+                <span className="dd-label">⚡ Speed</span>
+                <span className="dd-value">{asset.state.speed.value} {asset.state.speed.unit || 'km/h'}</span>
+              </div>
+            )}
+            
+            {/* Odometer */}
+            {asset.state.odometer && asset.state.odometer.observed && (
+              <div className="dd-field">
+                <span className="dd-label">📊 Total Distance</span>
+                <span className="dd-value">{asset.state.odometer.value} {asset.state.odometer.unit || 'km'}</span>
+              </div>
+            )}
+            
+            {/* Signal Strength */}
+            {asset.state.signal_strength && asset.state.signal_strength.observed && (
+              <div className="dd-field">
+                <span className="dd-label">📶 Signal Strength</span>
+                <span className="dd-value">{asset.state.signal_strength.value} {asset.state.signal_strength.unit || 'dBm'}</span>
+              </div>
+            )}
+            
+            {/* GPS Accuracy */}
+            {asset.state.accuracy && asset.state.accuracy.observed && (
+              <div className="dd-field">
+                <span className="dd-label">🛰️ GPS Accuracy</span>
+                <span className="dd-value">{asset.state.accuracy.value} {asset.state.accuracy.unit || 'm'}</span>
+              </div>
+            )}
+            
+            {/* Bearing */}
+            {asset.state.bearing && asset.state.bearing.observed && (
+              <div className="dd-field">
+                <span className="dd-label">🧭 Bearing</span>
+                <span className="dd-value">{asset.state.bearing.value}° {asset.state.bearing.unit || ''}</span>
+              </div>
+            )}
+            
+            {/* Altitude */}
+            {asset.state.altitude && asset.state.altitude.observed && (
+              <div className="dd-field">
+                <span className="dd-label">⛰️ Altitude</span>
+                <span className="dd-value">{asset.state.altitude.value} {asset.state.altitude.unit || 'm'}</span>
+              </div>
+            )}
+            
+            {/* Network Operator */}
+            {asset.state.network_operator && asset.state.network_operator.observed && (
+              <div className="dd-field">
+                <span className="dd-label">📡 Network</span>
+                <span className="dd-value">{asset.state.network_operator.value}</span>
+              </div>
+            )}
+            
+            {/* Connection Type */}
+            {asset.state.connection_type && asset.state.connection_type.observed && (
+              <div className="dd-field">
+                <span className="dd-label">📶 Connection Type</span>
+                <span className="dd-value">{asset.state.connection_type.value}</span>
+              </div>
+            )}
+            
+            {/* SOS / Panic Button */}
+            {asset.state.panic_button && asset.state.panic_button.observed && asset.state.panic_button.value && (
+              <div className="dd-field" style={{ background: '#FF5C5C20', padding: '8px', borderRadius: '4px' }}>
+                <span className="dd-label">🚨 SOS ALERT</span>
+                <span className="dd-value" style={{ color: '#FF5C5C', fontWeight: 'bold' }}>PANIC BUTTON PRESSED!</span>
+              </div>
+            )}
+            
+            {/* Harsh Acceleration */}
+            {asset.state.harsh_acceleration && asset.state.harsh_acceleration.observed && asset.state.harsh_acceleration.value && (
+              <div className="dd-field">
+                <span className="dd-label">⚠️ Harsh Acceleration</span>
+                <span className="dd-value" style={{ color: '#FFA500' }}>Detected</span>
+              </div>
+            )}
+            
+            {/* Harsh Braking */}
+            {asset.state.harsh_braking && asset.state.harsh_braking.observed && asset.state.harsh_braking.value && (
+              <div className="dd-field">
+                <span className="dd-label">⚠️ Harsh Braking</span>
+                <span className="dd-value" style={{ color: '#FFA500' }}>Detected</span>
+              </div>
+            )}
+            
+            {/* Sharp Turn */}
+            {asset.state.sharp_turn && asset.state.sharp_turn.observed && asset.state.sharp_turn.value && (
+              <div className="dd-field">
+                <span className="dd-label">⚠️ Sharp Turn</span>
+                <span className="dd-value" style={{ color: '#FFA500' }}>Detected</span>
+              </div>
+            )}
+          </>
+        )}
       </div>
       <div className="device-commands-full">
         {(isLocked || isPendingLock) ? (
