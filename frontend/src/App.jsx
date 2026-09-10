@@ -208,7 +208,7 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
     
     // Check if command is pending/sent/delivered (not completed/failed/superseded)
     if (recentCmd.status === 'pending' || recentCmd.status === 'sent' || recentCmd.status === 'delivered') {
-      const cmdTime = new Date(recentCmd.execution_time);
+      const cmdTime = new Date(recentCmd.execution_time + 'Z'); // Parse as UTC
       pendingMinutesAgo = Math.floor((Date.now() - cmdTime.getTime()) / 1000 / 60);
       
       // Only show as pending if less than 20 minutes old
@@ -460,7 +460,7 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
           </div>
           <div className="command-history-list">
             {asset.command_history.slice(0, 2).map(cmd => {
-              const cmdTime = new Date(cmd.execution_time);
+              const cmdTime = new Date(cmd.execution_time + 'Z'); // Parse as UTC
               const minutesAgo = Math.floor((Date.now() - cmdTime.getTime()) / 1000 / 60);
               const hoursAgo = Math.floor(minutesAgo / 60);
               const timeStr = hoursAgo > 24 ? `${Math.floor(hoursAgo / 24)}d ago` : hoursAgo > 0 ? `${hoursAgo}h ago` : `${minutesAgo}m ago`;
