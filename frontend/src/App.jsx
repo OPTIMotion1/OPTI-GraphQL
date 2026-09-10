@@ -197,25 +197,25 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
   const isBms  = device.iot_type_code === "battery_bms";
   const availableCommands = getCommandsForDevice(device.iot_type_code);
   
-  // Check for pending lock/unlock commands (for gt06 devices that can't report status)
-  const pendingCommands = JSON.parse(localStorage.getItem('pendingCommands') || '{}');
-  const pendingCmd = pendingCommands[device.device_id];
-  
-  // Auto-expire pending commands after 20 minutes
+  // Calculate pending state from VoltCred command history (server-side data)
   let isPendingLock = false;
   let isPendingUnlock = false;
   let pendingMinutesAgo = 0;
   
-  if (pendingCmd) {
-    pendingMinutesAgo = Math.floor((Date.now() - pendingCmd.timestamp) / 1000 / 60);
+  if (asset.command_history && asset.command_history.length > 0) {
+    // Get most recent command
+    const recentCmd = asset.command_history[0];
     
-    if (pendingMinutesAgo < 20) {
-      isPendingLock = pendingCmd.command === 'engine_cutoff';
-      isPendingUnlock = pendingCmd.command === 'engine_restore';
-    } else {
-      // Expired - remove from storage
-      delete pendingCommands[device.device_id];
-      localStorage.setItem('pendingCommands', JSON.stringify(pendingCommands));
+    // Check if command is pending/sent (not completed/failed/superseded)
+    if (recentCmd.status === 'pending' || recentCmd.status === 'sent') {
+      const cmdTime = new Date(recentCmd.execution_time);
+      pendingMinutesAgo = Math.floor((Date.now() - cmdTime.getTime()) / 1000 / 60);
+      
+      // Only show as pending if less than 20 minutes old
+      if (pendingMinutesAgo < 20) {
+        isPendingLock = recentCmd.command_code === 'engine_cutoff';
+        isPendingUnlock = recentCmd.command_code === 'engine_restore';
+      }
     }
   }
   
@@ -2690,23 +2690,11 @@ export default function App() {
         } 
       }));
       
-      // For gt06 devices, track pending lock/unlock state (cannot verify from API)
-      if (commandType === 'engine_cutoff' || commandType === 'engine_restore') {
-        const pendingState = {
-          command: commandType,
-          timestamp: Date.now(),
-          deviceImei: deviceImei
-        };
-        
-        // Store pending command with 20-minute expiry
-        const pendingCommands = JSON.parse(localStorage.getItem('pendingCommands') || '{}');
-        pendingCommands[deviceImei] = pendingState;
-        localStorage.setItem('pendingCommands', JSON.stringify(pendingCommands));
-        
-        console.log(`[Command] Tracked pending ${commandType} for ${deviceImei}`);
-      }
+      // No need to track in localStorage - command history from VoltCred API 
+      // will show pending status automatically for all users
+      console.log(`[Command] ${commandType} sent for ${deviceImei} - will show in command history`);
       
-      // Refresh after 3 seconds to get real lock state from VoltCred API
+      // Refresh after 3 seconds to get updated command history from VoltCred API
       setTimeout(() => {
         reload();
         setCommandStatus((p) => ({ ...p, [deviceId]: undefined }));
