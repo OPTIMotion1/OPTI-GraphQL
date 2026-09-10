@@ -274,31 +274,31 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
           {hasFix && (
             <div className="location-actions">
               <button 
-                className="location-btn location-maps"
+                className="location-btn"
                 onClick={() => window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank')}
                 title="Open in Google Maps"
               >
-                🗺️ View on Map
+                🗺️ Map
               </button>
               <button 
-                className="location-btn location-whatsapp"
+                className="location-btn"
                 onClick={() => {
                   const mapLink = `https://www.google.com/maps?q=${lat},${lng}`;
-                  const message = `Vehicle Location: ${asset.name}\n${mapLink}`;
+                  const message = `Vehicle: ${asset.name}\n📍 ${mapLink}`;
                   window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
                 }}
                 title="Share via WhatsApp"
               >
-                💬 WhatsApp
+                💬 Share
               </button>
               <button 
-                className="location-btn location-copy"
+                className="location-btn"
                 onClick={() => {
                   const mapLink = `https://www.google.com/maps?q=${lat},${lng}`;
                   navigator.clipboard.writeText(mapLink);
-                  alert('📋 Location link copied!');
+                  alert('📋 Location copied!');
                 }}
-                title="Copy Google Maps link"
+                title="Copy location"
               >
                 📋 Copy
               </button>
@@ -459,7 +459,7 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
             📋 Recent Commands
           </div>
           <div className="command-history-list">
-            {asset.command_history.slice(0, 3).map(cmd => {
+            {asset.command_history.slice(0, 2).map(cmd => {
               const cmdTime = new Date(cmd.execution_time);
               const minutesAgo = Math.floor((Date.now() - cmdTime.getTime()) / 1000 / 60);
               const hoursAgo = Math.floor(minutesAgo / 60);
