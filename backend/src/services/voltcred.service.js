@@ -328,4 +328,25 @@ async function sendDeviceCommand(deviceId, commandType) {
   return data?.executeDeviceCommand;
 }
 
-module.exports = { login, getAssets, sendDeviceCommand, graphqlRequest };
+// ── Get device commands ───────────────────────────────────────────────────────
+// Returns command history for a specific device
+// Shows all commands sent to the device with their current status
+
+async function getDeviceCommands(deviceId) {
+  const query = `
+    query GetDeviceCommands($deviceId: Int!) {
+      deviceCommands(device_id: $deviceId) {
+        id
+        command_code
+        status
+        execution_time
+        response
+      }
+    }
+  `;
+
+  const data = await graphqlRequest(query, { deviceId: parseInt(deviceId, 10) });
+  return data?.deviceCommands || [];
+}
+
+module.exports = { login, getAssets, sendDeviceCommand, getDeviceCommands, graphqlRequest };

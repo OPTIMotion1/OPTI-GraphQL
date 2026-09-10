@@ -350,6 +350,99 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
         </button>
       </div>
       {status && status.state !== 'error' && <span className={`cmd-status cmd-${status.state}`}>{status.message}</span>}
+      
+      {/* Command History Section */}
+      {asset.command_history && asset.command_history.length > 0 && (
+        <div style={{ 
+          marginTop: 12, 
+          padding: 10, 
+          background: 'rgba(100,100,100,0.05)', 
+          borderRadius: 6,
+          border: '1px solid rgba(100,100,100,0.1)'
+        }}>
+          <div style={{ 
+            fontSize: 12, 
+            fontWeight: 600, 
+            marginBottom: 8,
+            color: 'var(--text2)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6
+          }}>
+            📋 Recent Commands
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {asset.command_history.slice(0, 3).map(cmd => {
+              const cmdTime = new Date(cmd.execution_time);
+              const minutesAgo = Math.floor((Date.now() - cmdTime.getTime()) / 1000 / 60);
+              const hoursAgo = Math.floor(minutesAgo / 60);
+              const timeStr = hoursAgo > 0 ? `${hoursAgo}h ago` : `${minutesAgo}m ago`;
+              
+              const statusColor = {
+                'pending': '#FFA500',
+                'superseded': '#999',
+                'completed': '#4CAF50',
+                'failed': '#F44336'
+              }[cmd.status] || '#666';
+              
+              const statusEmoji = {
+                'pending': '⏳',
+                'superseded': '❌',
+                'completed': '✅',
+                'failed': '⚠️'
+              }[cmd.status] || '•';
+              
+              const commandName = {
+                'engine_cutoff': '🔒 Lock',
+                'engine_restore': '🔓 Unlock',
+                'location_request': '📍 Locate'
+              }[cmd.command_code] || cmd.command_code;
+              
+              return (
+                <div key={cmd.id} style={{ 
+                  fontSize: 11,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '4px 0',
+                  color: 'var(--text3)'
+                }}>
+                  <span style={{ flex: 1 }}>
+                    {commandName}
+                  </span>
+                  <span style={{ 
+                    padding: '2px 8px',
+                    borderRadius: 4,
+                    background: statusColor + '20',
+                    color: statusColor,
+                    fontWeight: 500,
+                    fontSize: 10,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4
+                  }}>
+                    {statusEmoji} {cmd.status}
+                  </span>
+                  <span style={{ marginLeft: 8, opacity: 0.6 }}>
+                    {timeStr}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          {asset.command_history.some(cmd => cmd.status === 'pending') && device.iot_type_code === 'gt06' && (
+            <div style={{ 
+              marginTop: 8,
+              fontSize: 10,
+              color: 'var(--text3)',
+              opacity: 0.7
+            }}>
+              ℹ️ gt06 devices wake every 10-15 minutes. Pending commands execute automatically when device wakes.
+            </div>
+          )}
+        </div>
+      )}
+      
       {device.iot_type_code === 'gt06' && (isPendingLock || isPendingUnlock) && (
         <div style={{ 
           marginTop: 8, 

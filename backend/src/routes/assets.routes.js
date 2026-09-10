@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { getAssets } = require("../services/voltcred.service");
+const { getAssets, getDeviceCommands } = require("../services/voltcred.service");
 const { getAllRentals } = require("../services/renewals.service");
 const fs = require('fs');
 const path = require('path');
@@ -63,7 +63,30 @@ router.get("/", async (req, res) => {
       return asset;
     });
     
-    // THEN: Try to match with Optimotion rental data to get operator names
+    // THEN: Fetch command history for each device (parallel requests)
+    console.log(`[Assets] Fetching command history for ${enrichedAssets.length} devices...`);
+    const commandHistoryPromises = enrichedAssets.map(async asset => {
+      try {
+        // Get the primary device ID
+        const primaryDevice = asset.iot_devices?.find(d => d.is_primary);
+        if (primaryDevice?.id) {
+          const commands = await getDeviceCommands(primaryDevice.id);
+          return {
+            ...asset,
+            command_history: commands || []
+          };
+        }
+        return asset;
+      } catch (error) {
+        console.warn(`[Assets] Could not fetch commands for ${asset.name}:`, error.message);
+        return asset;
+      }
+    });
+    
+    enrichedAssets = await Promise.all(commandHistoryPromises);
+    console.log(`[Assets] ✓ Command history fetched for all devices`);
+    
+    // AFTER: Try to match with Optimotion rental data to get operator names
     try {
       const optimotionEnabled = process.env.OPTIMOTION_RENEWALS_FETCH_ENABLED !== 'false';
       const rentals = optimotionEnabled ? await getAllRentals() : [];
