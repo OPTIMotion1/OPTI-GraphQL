@@ -234,14 +234,67 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial
 .device-commands-full { display: flex; flex-wrap: wrap; gap: 6px; }
 
 /* ── Command buttons ────────────────────────────────────────────────────── */
-.cmd-btn { border: 1px solid var(--border3); background: var(--bg4); color: var(--text2); padding: 6px 14px; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; font-family: inherit; }
+.device-commands-full { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.cmd-btn { border: 1px solid var(--border3); background: var(--bg4); color: var(--text2); padding: 8px 16px; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; font-family: inherit; }
 .cmd-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .cmd-danger:hover:not(:disabled) { background: rgba(255,92,92,0.12); border-color: var(--red);   color: #FF8181; }
 .cmd-safe:hover:not(:disabled)   { background: rgba(34,211,122,0.12); border-color: var(--green); color: #4DE89A; }
-.cmd-status { font-size: 12px; font-weight: 600; }
+.cmd-status { font-size: 12px; font-weight: 600; margin-top: 6px; }
 .cmd-pending { color: var(--text4); }
 .cmd-success { color: var(--green); }
 .cmd-error   { color: var(--red);   }
+
+/* ── Command History ────────────────────────────────────────────────────── */
+.command-history-box {
+  margin-top: 12px;
+  padding: 12px;
+  background: var(--bg3);
+  border-radius: 8px;
+  border: 1px solid var(--border2);
+}
+.command-history-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text4);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.command-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.command-history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  background: var(--bg4);
+  border-radius: 6px;
+  font-size: 12px;
+}
+.command-history-cmd {
+  font-weight: 600;
+  color: var(--text2);
+}
+.command-history-status {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.command-history-time {
+  color: var(--text5);
+  font-size: 11px;
+  margin-left: 8px;
+}
 
 /* ── Search bar ─────────────────────────────────────────────────────────── */
 .search-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
