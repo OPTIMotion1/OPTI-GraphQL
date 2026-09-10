@@ -206,8 +206,8 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
     // Get most recent command
     const recentCmd = asset.command_history[0];
     
-    // Check if command is pending/sent (not completed/failed/superseded)
-    if (recentCmd.status === 'pending' || recentCmd.status === 'sent') {
+    // Check if command is pending/sent/delivered (not completed/failed/superseded)
+    if (recentCmd.status === 'pending' || recentCmd.status === 'sent' || recentCmd.status === 'delivered') {
       const cmdTime = new Date(recentCmd.execution_time);
       pendingMinutesAgo = Math.floor((Date.now() - cmdTime.getTime()) / 1000 / 60);
       
@@ -468,6 +468,7 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
               const statusColor = {
                 'pending': '#FFA500',
                 'sent': '#4CAF50',
+                'delivered': '#4CAF50',
                 'superseded': '#999',
                 'completed': '#4CAF50',
                 'failed': '#F44336'
@@ -476,6 +477,7 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
               const statusEmoji = {
                 'pending': '⏳',
                 'sent': '✓',
+                'delivered': '✓',
                 'superseded': '×',
                 'completed': '✓',
                 'failed': '⚠'
