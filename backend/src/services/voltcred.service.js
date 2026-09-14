@@ -156,14 +156,8 @@ async function getAssets() {
             state {
               key
               label
-              kind
-              unit
               value
-              observed
-              updated_at
-              stale
               writable
-              direction
             }
           }
           iot_devices {
@@ -184,14 +178,8 @@ async function getAssets() {
             state {
               key
               label
-              kind
-              unit
               value
-              observed
-              updated_at
-              stale
               writable
-              direction
             }
           }
         }
@@ -224,11 +212,12 @@ async function getAssets() {
           deviceState[s.key] = {
             value: s.value,
             label: s.label,
-            observed: s.observed,
-            stale: s.stale,
             writable: s.writable,
-            unit: s.unit,
-            updated_at: s.updated_at
+            // These fields removed to work around VoltCred bug with null values
+            observed: true,  // Default to true
+            stale: false,    // Default to false
+            unit: null,
+            updated_at: null
           };
         });
       }
@@ -266,11 +255,12 @@ async function getAssets() {
             acc[s.key] = {
               value: s.value,
               label: s.label,
-              observed: s.observed,
-              stale: s.stale,
               writable: s.writable,
-              unit: s.unit,
-              updated_at: s.updated_at
+              // Defaults to work around VoltCred bug
+              observed: true,
+              stale: false,
+              unit: null,
+              updated_at: null
             };
             return acc;
           }, {})
