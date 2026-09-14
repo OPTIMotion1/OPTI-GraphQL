@@ -275,8 +275,8 @@ async function getAssets() {
     };
   } catch (error) {
     console.error('Error fetching assets from VoltCred:', error.message);
-    // Return empty structure instead of throwing
-    return { assets: [], counts: null, total: 0 };
+    // Re-throw the error so the route handler can inform the frontend
+    throw error;
   }
 }
 

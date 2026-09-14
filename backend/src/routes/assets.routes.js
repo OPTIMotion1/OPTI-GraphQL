@@ -102,21 +102,28 @@ router.get("/", async (req, res) => {
 
     // Enhanced error logging for debugging
     console.error("❌ ERROR fetching assets:", msg);
+    console.error("   Error Type:", error.constructor.name);
     if (error.response) {
-      console.error("   Response Status:", error.response.status);
+      console.error("   HTTP Status:", error.response.status, error.response.statusText);
       console.error("   Response Data:", JSON.stringify(error.response.data, null, 2));
     }
     if (error.stack) {
       console.error("   Stack:", error.stack.split('\n').slice(0, 3).join('\n'));
     }
+    
+    // Check if it's a GraphQL error with null values (the intermittent issue)
+    const isNullError = msg.includes('null') || msg.includes('Cannot return null') || msg.includes('Expected non-nullable type');
 
     res.status(isPermission ? 403 : 500).json({
       success: false,
       permissionBlocked: isPermission,
-      error: isPermission
-        ? "Assets query is not authorized for this account. Ask VoltCred to enable assets permission for hello@optimotion.in on the GraphQL API."
-        : msg,
+      error: isNullError
+        ? "VoltCred API returned invalid data (null values in required fields). This is a known VoltCred bug. The dashboard will retry automatically."
+        : isPermission
+          ? "Assets query is not authorized for this account. Ask VoltCred to enable assets permission for hello@optimotion.in on the GraphQL API."
+          : msg,
       details: error.response?.data || null,
+      errorType: isNullError ? 'voltcred_null_error' : isPermission ? 'permission_error' : 'generic_error'
     });
   }
 });

@@ -107,7 +107,7 @@ function useAssets(authenticatedFetch) {
       const res  = await authenticatedFetch('/api/assets');
       const data = await res.json();
       if (data.permissionBlocked) {
-        setPermBlocked(true); setAssets([]); setCounts(null); setTotal(0); setError(null);
+        setPermBlocked(true); setAssets([]); setCounts(null); setTotal(0);
       } else if (!data.success) {
         throw new Error(data.error || "Failed to load assets");
       } else {
@@ -119,10 +119,7 @@ function useAssets(authenticatedFetch) {
       }
       setLastFetched(new Date());
     } catch (err) {
-      console.error('[Frontend] Error loading assets:', err.message);
       setError(err.message);
-      // Don't clear assets on error - keep showing last successful data
-      // setAssets([]);
     } finally {
       setLoading(false);
     }
@@ -200,25 +197,25 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
   const isBms  = device.iot_type_code === "battery_bms";
   const availableCommands = getCommandsForDevice(device.iot_type_code);
   
-  // Calculate pending state from VoltCred command history (server-side data)
+  // Check for pending lock/unlock commands (for gt06 devices that can't report status)
+  const pendingCommands = JSON.parse(localStorage.getItem('pendingCommands') || '{}');
+  const pendingCmd = pendingCommands[device.device_id];
+  
+  // Auto-expire pending commands after 20 minutes
   let isPendingLock = false;
   let isPendingUnlock = false;
   let pendingMinutesAgo = 0;
   
-  if (asset.command_history && asset.command_history.length > 0) {
-    // Get most recent command
-    const recentCmd = asset.command_history[0];
+  if (pendingCmd) {
+    pendingMinutesAgo = Math.floor((Date.now() - pendingCmd.timestamp) / 1000 / 60);
     
-    // Check if command is pending/sent/delivered (not completed/failed/superseded)
-    if (recentCmd.status === 'pending' || recentCmd.status === 'sent' || recentCmd.status === 'delivered') {
-      const cmdTime = new Date(recentCmd.execution_time + 'Z'); // Parse as UTC
-      pendingMinutesAgo = Math.floor((Date.now() - cmdTime.getTime()) / 1000 / 60);
-      
-      // Only show as pending if less than 20 minutes old
-      if (pendingMinutesAgo < 20) {
-        isPendingLock = recentCmd.command_code === 'engine_cutoff';
-        isPendingUnlock = recentCmd.command_code === 'engine_restore';
-      }
+    if (pendingMinutesAgo < 20) {
+      isPendingLock = pendingCmd.command === 'engine_cutoff';
+      isPendingUnlock = pendingCmd.command === 'engine_restore';
+    } else {
+      // Expired - remove from storage
+      delete pendingCommands[device.device_id];
+      localStorage.setItem('pendingCommands', JSON.stringify(pendingCommands));
     }
   }
   
@@ -277,138 +274,37 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
           {hasFix && (
             <div className="location-actions">
               <button 
-                className="location-btn"
+                className="location-btn location-maps"
                 onClick={() => window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank')}
                 title="Open in Google Maps"
               >
-                🗺️ Map
+                🗺️ View on Map
               </button>
               <button 
-                className="location-btn"
+                className="location-btn location-whatsapp"
                 onClick={() => {
                   const mapLink = `https://www.google.com/maps?q=${lat},${lng}`;
-                  const message = `Vehicle: ${asset.name}\n📍 ${mapLink}`;
+                  const message = `Vehicle Location: ${asset.name}\n${mapLink}`;
                   window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
                 }}
                 title="Share via WhatsApp"
               >
-                💬 Share
+                💬 WhatsApp
               </button>
               <button 
-                className="location-btn"
+                className="location-btn location-copy"
                 onClick={() => {
                   const mapLink = `https://www.google.com/maps?q=${lat},${lng}`;
                   navigator.clipboard.writeText(mapLink);
-                  alert('📋 Location copied!');
+                  alert('📋 Location link copied!');
                 }}
-                title="Copy location"
+                title="Copy Google Maps link"
               >
                 📋 Copy
               </button>
             </div>
           )}
         </div>
-        
-        {/* Display ALL VoltCred Device State */}
-        {asset.state && Object.keys(asset.state).length > 0 && (
-          <>
-            {/* Speed */}
-            {asset.state.speed && asset.state.speed.value != null && (
-              <div className="dd-field">
-                <span className="dd-label">⚡ Speed</span>
-                <span className="dd-value">{asset.state.speed.value} {asset.state.speed.unit || 'km/h'}</span>
-              </div>
-            )}
-            
-            {/* Odometer */}
-            {asset.state.odometer && asset.state.odometer.value != null && (
-              <div className="dd-field">
-                <span className="dd-label">📊 Total Distance</span>
-                <span className="dd-value">{asset.state.odometer.value} {asset.state.odometer.unit || 'km'}</span>
-              </div>
-            )}
-            
-            {/* Signal Strength */}
-            {asset.state.signal_strength && asset.state.signal_strength.value != null && (
-              <div className="dd-field">
-                <span className="dd-label">📶 Signal Strength</span>
-                <span className="dd-value">{asset.state.signal_strength.value} {asset.state.signal_strength.unit || 'dBm'}</span>
-              </div>
-            )}
-            
-            {/* GPS Accuracy */}
-            {asset.state.accuracy && asset.state.accuracy.value != null && (
-              <div className="dd-field">
-                <span className="dd-label">🛰️ GPS Accuracy</span>
-                <span className="dd-value">{asset.state.accuracy.value} {asset.state.accuracy.unit || 'm'}</span>
-              </div>
-            )}
-            
-            {/* Bearing */}
-            {asset.state.bearing && asset.state.bearing.value != null && (
-              <div className="dd-field">
-                <span className="dd-label">🧭 Bearing</span>
-                <span className="dd-value">{asset.state.bearing.value}° {asset.state.bearing.unit || ''}</span>
-              </div>
-            )}
-            
-            {/* Altitude */}
-            {asset.state.altitude && asset.state.altitude.value != null && (
-              <div className="dd-field">
-                <span className="dd-label">⛰️ Altitude</span>
-                <span className="dd-value">{asset.state.altitude.value} {asset.state.altitude.unit || 'm'}</span>
-              </div>
-            )}
-            
-            {/* Network Operator */}
-            {asset.state.network_operator && asset.state.network_operator.value != null && (
-              <div className="dd-field">
-                <span className="dd-label">📡 Network</span>
-                <span className="dd-value">{asset.state.network_operator.value}</span>
-              </div>
-            )}
-            
-            {/* Connection Type */}
-            {asset.state.connection_type && asset.state.connection_type.value != null && (
-              <div className="dd-field">
-                <span className="dd-label">📶 Connection Type</span>
-                <span className="dd-value">{asset.state.connection_type.value}</span>
-              </div>
-            )}
-            
-            {/* SOS / Panic Button */}
-            {asset.state.panic_button && asset.state.panic_button.observed && asset.state.panic_button.value && (
-              <div className="dd-field" style={{ background: '#FF5C5C20', padding: '8px', borderRadius: '4px' }}>
-                <span className="dd-label">🚨 SOS ALERT</span>
-                <span className="dd-value" style={{ color: '#FF5C5C', fontWeight: 'bold' }}>PANIC BUTTON PRESSED!</span>
-              </div>
-            )}
-            
-            {/* Harsh Acceleration */}
-            {asset.state.harsh_acceleration && asset.state.harsh_acceleration.observed && asset.state.harsh_acceleration.value && (
-              <div className="dd-field">
-                <span className="dd-label">⚠️ Harsh Acceleration</span>
-                <span className="dd-value" style={{ color: '#FFA500' }}>Detected</span>
-              </div>
-            )}
-            
-            {/* Harsh Braking */}
-            {asset.state.harsh_braking && asset.state.harsh_braking.observed && asset.state.harsh_braking.value && (
-              <div className="dd-field">
-                <span className="dd-label">⚠️ Harsh Braking</span>
-                <span className="dd-value" style={{ color: '#FFA500' }}>Detected</span>
-              </div>
-            )}
-            
-            {/* Sharp Turn */}
-            {asset.state.sharp_turn && asset.state.sharp_turn.observed && asset.state.sharp_turn.value && (
-              <div className="dd-field">
-                <span className="dd-label">⚠️ Sharp Turn</span>
-                <span className="dd-value" style={{ color: '#FFA500' }}>Detected</span>
-              </div>
-            )}
-          </>
-        )}
       </div>
       <div className="device-commands-full">
         {(isLocked || isPendingLock) ? (
@@ -457,21 +353,33 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
       
       {/* Command History Section */}
       {asset.command_history && asset.command_history.length > 0 && (
-        <div className="command-history-box">
-          <div className="command-history-title">
+        <div style={{ 
+          marginTop: 12, 
+          padding: 10, 
+          background: 'rgba(100,100,100,0.05)', 
+          borderRadius: 6,
+          border: '1px solid rgba(100,100,100,0.1)'
+        }}>
+          <div style={{ 
+            fontSize: 12, 
+            fontWeight: 600, 
+            marginBottom: 8,
+            color: 'var(--text2)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6
+          }}>
             📋 Recent Commands
           </div>
-          <div className="command-history-list">
-            {asset.command_history.slice(0, 2).map(cmd => {
-              const cmdTime = new Date(cmd.execution_time + 'Z'); // Parse as UTC
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {asset.command_history.slice(0, 3).map(cmd => {
+              const cmdTime = new Date(cmd.execution_time);
               const minutesAgo = Math.floor((Date.now() - cmdTime.getTime()) / 1000 / 60);
               const hoursAgo = Math.floor(minutesAgo / 60);
-              const timeStr = hoursAgo > 24 ? `${Math.floor(hoursAgo / 24)}d ago` : hoursAgo > 0 ? `${hoursAgo}h ago` : `${minutesAgo}m ago`;
+              const timeStr = hoursAgo > 0 ? `${hoursAgo}h ago` : `${minutesAgo}m ago`;
               
               const statusColor = {
                 'pending': '#FFA500',
-                'sent': '#4CAF50',
-                'delivered': '#4CAF50',
                 'superseded': '#999',
                 'completed': '#4CAF50',
                 'failed': '#F44336'
@@ -479,11 +387,9 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
               
               const statusEmoji = {
                 'pending': '⏳',
-                'sent': '✓',
-                'delivered': '✓',
-                'superseded': '×',
-                'completed': '✓',
-                'failed': '⚠'
+                'superseded': '❌',
+                'completed': '✅',
+                'failed': '⚠️'
               }[cmd.status] || '•';
               
               const commandName = {
@@ -493,21 +399,47 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
               }[cmd.command_code] || cmd.command_code;
               
               return (
-                <div key={cmd.id} className="command-history-item">
-                  <span className="command-history-cmd">{commandName}</span>
-                  <div style={{ display: 'flex', alignItems: 'center' }}>
-                    <span className="command-history-status" style={{ 
-                      background: statusColor + '20',
-                      color: statusColor
-                    }}>
-                      {statusEmoji} {cmd.status}
-                    </span>
-                    <span className="command-history-time">{timeStr}</span>
-                  </div>
+                <div key={cmd.id} style={{ 
+                  fontSize: 11,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '4px 0',
+                  color: 'var(--text3)'
+                }}>
+                  <span style={{ flex: 1 }}>
+                    {commandName}
+                  </span>
+                  <span style={{ 
+                    padding: '2px 8px',
+                    borderRadius: 4,
+                    background: statusColor + '20',
+                    color: statusColor,
+                    fontWeight: 500,
+                    fontSize: 10,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4
+                  }}>
+                    {statusEmoji} {cmd.status}
+                  </span>
+                  <span style={{ marginLeft: 8, opacity: 0.6 }}>
+                    {timeStr}
+                  </span>
                 </div>
               );
             })}
           </div>
+          {asset.command_history.some(cmd => cmd.status === 'pending') && device.iot_type_code === 'gt06' && (
+            <div style={{ 
+              marginTop: 8,
+              fontSize: 10,
+              color: 'var(--text3)',
+              opacity: 0.7
+            }}>
+              ℹ️ gt06 devices wake every 10-15 minutes. Pending commands execute automatically when device wakes.
+            </div>
+          )}
         </div>
       )}
       
@@ -2657,11 +2589,23 @@ export default function App() {
         } 
       }));
       
-      // No need to track in localStorage - command history from VoltCred API 
-      // will show pending status automatically for all users
-      console.log(`[Command] ${commandType} sent for ${deviceImei} - will show in command history`);
+      // For gt06 devices, track pending lock/unlock state (cannot verify from API)
+      if (commandType === 'engine_cutoff' || commandType === 'engine_restore') {
+        const pendingState = {
+          command: commandType,
+          timestamp: Date.now(),
+          deviceImei: deviceImei
+        };
+        
+        // Store pending command with 20-minute expiry
+        const pendingCommands = JSON.parse(localStorage.getItem('pendingCommands') || '{}');
+        pendingCommands[deviceImei] = pendingState;
+        localStorage.setItem('pendingCommands', JSON.stringify(pendingCommands));
+        
+        console.log(`[Command] Tracked pending ${commandType} for ${deviceImei}`);
+      }
       
-      // Refresh after 3 seconds to get updated command history from VoltCred API
+      // Refresh after 3 seconds to get real lock state from VoltCred API
       setTimeout(() => {
         reload();
         setCommandStatus((p) => ({ ...p, [deviceId]: undefined }));
@@ -2730,26 +2674,7 @@ export default function App() {
           </div>
         </div>
 
-        {error && !permBlocked && (
-          <div className="error-banner" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <strong>⚠️ VoltCred API Error:</strong> {error}
-              <div style={{ fontSize: 12, marginTop: 4, opacity: 0.8 }}>
-                {assets.length > 0 
-                  ? 'Showing last successful data. Auto-refreshing every 30 seconds...' 
-                  : 'Unable to fetch vehicle data. This may be due to VoltCred API returning invalid data (observed: null).'}
-              </div>
-            </div>
-            <button 
-              className="refresh-btn" 
-              onClick={reload} 
-              disabled={loading}
-              style={{ marginLeft: 16, flexShrink: 0 }}
-            >
-              {loading ? "⏳" : "↻"} Retry
-            </button>
-          </div>
-        )}
+        {error && !permBlocked && <div className="error-banner">{error}</div>}
 
         {activeTab === "dashboard" && <DashboardTab assets={assets} counts={counts} permBlocked={permBlocked} onCommand={requestCommand} commandStatus={commandStatus} lockState={lockState} />}
         {activeTab === "tracker"   && <TrackerTab   assets={assets} onCommand={requestCommand} commandStatus={commandStatus} lockState={lockState} />}

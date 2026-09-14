@@ -1,0 +1,98 @@
+========================================
+CURL COMMANDS FOR VOLTCRED SUPPORT
+========================================
+Account: hello@optimotion.in
+Date: September 12, 2026
+Token valid for: ~1 hour
+
+========================================
+ISSUE #1: IMMOBILIZER STATUS ALWAYS NULL
+========================================
+
+curl 'https://api.voltcred.com/v2/graphql' \
+  -H 'Content-Type: application/json' \
+  -H 'Cookie: authorization=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcHAiOiJ2b2x0Y3JlZCIsImRldmljZSI6IndlYiIsImVtYWlsIjoiaGVsbG9Ab3B0aW1vdGlvbi5pbiIsImV4cCI6MTc4OTI4ODc0MCwiZXh0ZXJuYWxfaWQiOiI5NSIsImlhdCI6MTc4OTIwMjM0MCwiaXNzIjoiaGVpbWRhbGxyIiwib3JnX2lkIjoxODMsInJ4cCI6MTc4OTM3NTE0MCwic3ViIjoiOTg5NzgzIiwidXNlcl9pZCI6OTg5NzgzfQ.Gc9cnFSqY1cY-YcgG0aVWVInchUNAweyRPvx2lvWplVYtcDzrGxg2cSy8QTkLW3q_8z80vO3zCzNwI3cshFnqNfKoEePNBsdRViy2mGcCrJ6vyIUtWIPrGynlqvQfVmFYOeTLuHVNkI3KmgzA6Q1rP2-hBCWmWQSRDVlO6FvRyX-jGT4f5qYJDo2V92EKlyds_c5DGhpuYa_XF8Nc6f1EijGK8HGq9YbGRU6bUepse5EH1N9XZHye5JqhnroW1LgNns4hOG9m5dtpW47gK7pLM8kmyGqSc73MrnehLgItgtDqTCVh53IgRO_8Yb4gSoFA9yaehTjkjcAd7bs-Oje0I2KKmYG0r5xVAR1McrpzZUXfRDQQbY4Kaob2LW6xI8TrBRYKyBgkeC_6gQKPiVdKvW3MBqX5cps0mrFzD18MNY8zv7alfQL783o8dnbCe8hoUqmmzrqolfB2NWvHs4Fs4MVXpW7dEHciGPZZVF9rGR7sqoFb1HctYwOjj9uHB4oXrLi1mK_43ZIyrUK1UhYDdm6UkWqERrKNGYCq92Q2n1XgvQhxpx863ipEsr5-L3nJJzjmXsOTntt-Fx1M_USAhMdZUQuG0DdmXyiuM7vrASyeaWyHXkOQNp52PFZ42_FS7bUXg5f5Vd6JvozWsJGX98WIG-EPhlzDR9PeGX0FjU; device=web' \
+  --data-raw '{"query":"query { assetsWithPagination(limit: 5) { rows { name iot_devices { id device_id iot_type_code connection_status state { key label value observed writable updated_at stale } } } } }"}'
+
+WHAT TO LOOK FOR:
+- Find "immobilized" in state array
+- Check "value" field -> Should be true/false, but shows NULL
+- Check "observed" field -> Shows true for 5 devices, but value still NULL
+- Check "updated_at" -> August 2, 2026 (38+ days old!)
+
+PROBLEM: Cannot determine if vehicle is locked/unlocked
+
+
+========================================
+ISSUE #2: COMMAND STATUS - NO EXECUTION CONFIRMATION
+========================================
+
+# Check command history for device 245 (864540080383862)
+curl 'https://api.voltcred.com/v2/graphql' \
+  -H 'Content-Type: application/json' \
+  -H 'Cookie: authorization=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcHAiOiJ2b2x0Y3JlZCIsImRldmljZSI6IndlYiIsImVtYWlsIjoiaGVsbG9Ab3B0aW1vdGlvbi5pbiIsImV4cCI6MTc4OTI4ODc0MCwiZXh0ZXJuYWxfaWQiOiI5NSIsImlhdCI6MTc4OTIwMjM0MCwiaXNzIjoiaGVpbWRhbGxyIiwib3JnX2lkIjoxODMsInJ4cCI6MTc4OTM3NTE0MCwic3ViIjoiOTg5NzgzIiwidXNlcl9pZCI6OTg5NzgzfQ.Gc9cnFSqY1cY-YcgG0aVWVInchUNAweyRPvx2lvWplVYtcDzrGxg2cSy8QTkLW3q_8z80vO3zCzNwI3cshFnqNfKoEePNBsdRViy2mGcCrJ6vyIUtWIPrGynlqvQfVmFYOeTLuHVNkI3KmgzA6Q1rP2-hBCWmWQSRDVlO6FvRyX-jGT4f5qYJDo2V92EKlyds_c5DGhpuYa_XF8Nc6f1EijGK8HGq9YbGRU6bUepse5EH1N9XZHye5JqhnroW1LgNns4hOG9m5dtpW47gK7pLM8kmyGqSc73MrnehLgItgtDqTCVh53IgRO_8Yb4gSoFA9yaehTjkjcAd7bs-Oje0I2KKmYG0r5xVAR1McrpzZUXfRDQQbY4Kaob2LW6xI8TrBRYKyBgkeC_6gQKPiVdKvW3MBqX5cps0mrFzD18MNY8zv7alfQL783o8dnbCe8hoUqmmzrqolfB2NWvHs4Fs4MVXpW7dEHciGPZZVF9rGR7sqoFb1HctYwOjj9uHB4oXrLi1mK_43ZIyrUK1UhYDdm6UkWqERrKNGYCq92Q2n1XgvQhxpx863ipEsr5-L3nJJzjmXsOTntt-Fx1M_USAhMdZUQuG0DdmXyiuM7vrASyeaWyHXkOQNp52PFZ42_FS7bUXg5f5Vd6JvozWsJGX98WIG-EPhlzDR9PeGX0FjU; device=web' \
+  --data-raw '{"query":"query { deviceCommands(device_id: 245) { id command_code status execution_time response } }"}'
+
+WHAT TO LOOK FOR:
+- Check "status" field for engine_cutoff/engine_restore commands
+- Status shows: pending -> sent -> delivered
+- But NEVER shows "completed" (no execution confirmation)
+- "response" field is always NULL (no feedback from device)
+
+PROBLEM: Cannot confirm if lock/unlock command actually executed
+
+
+========================================
+ISSUE #3: DEVICE NEVER CONNECTED
+========================================
+
+# Check device 864540080665904 (ID: 239)
+curl 'https://api.voltcred.com/v2/graphql' \
+  -H 'Content-Type: application/json' \
+  -H 'Cookie: authorization=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcHAiOiJ2b2x0Y3JlZCIsImRldmljZSI6IndlYiIsImVtYWlsIjoiaGVsbG9Ab3B0aW1vdGlvbi5pbiIsImV4cCI6MTc4OTI4ODc0MCwiZXh0ZXJuYWxfaWQiOiI5NSIsImlhdCI6MTc4OTIwMjM0MCwiaXNzIjoiaGVpbWRhbGxyIiwib3JnX2lkIjoxODMsInJ4cCI6MTc4OTM3NTE0MCwic3ViIjoiOTg5NzgzIiwidXNlcl9pZCI6OTg5NzgzfQ.Gc9cnFSqY1cY-YcgG0aVWVInchUNAweyRPvx2lvWplVYtcDzrGxg2cSy8QTkLW3q_8z80vO3zCzNwI3cshFnqNfKoEePNBsdRViy2mGcCrJ6vyIUtWIPrGynlqvQfVmFYOeTLuHVNkI3KmgzA6Q1rP2-hBCWmWQSRDVlO6FvRyX-jGT4f5qYJDo2V92EKlyds_c5DGhpuYa_XF8Nc6f1EijGK8HGq9YbGRU6bUepse5EH1N9XZHye5JqhnroW1LgNns4hOG9m5dtpW47gK7pLM8kmyGqSc73MrnehLgItgtDqTCVh53IgRO_8Yb4gSoFA9yaehTjkjcAd7bs-Oje0I2KKmYG0r5xVAR1McrpzZUXfRDQQbY4Kaob2LW6xI8TrBRYKyBgkeC_6gQKPiVdKvW3MBqX5cps0mrFzD18MNY8zv7alfQL783o8dnbCe8hoUqmmzrqolfB2NWvHs4Fs4MVXpW7dEHciGPZZVF9rGR7sqoFb1HctYwOjj9uHB4oXrLi1mK_43ZIyrUK1UhYDdm6UkWqERrKNGYCq92Q2n1XgvQhxpx863ipEsr5-L3nJJzjmXsOTntt-Fx1M_USAhMdZUQuG0DdmXyiuM7vrASyeaWyHXkOQNp52PFZ42_FS7bUXg5f5Vd6JvozWsJGX98WIG-EPhlzDR9PeGX0FjU; device=web' \
+  --data-raw '{"query":"query { assetsWithPagination(limit: 20) { rows { name iot_devices { id device_id connection_status last_communication } } } }"}'
+
+WHAT TO LOOK FOR:
+- Find device with device_id "864540080665904"
+- Check "connection_status" -> Shows "unknown" (not connected/disconnected)
+- Check "last_communication" -> Shows NULL (never communicated)
+
+PROBLEM: Device registered but has NEVER connected to VoltCred servers
+
+
+========================================
+WHAT WE NEED FROM VOLTCRED
+========================================
+
+1. IMMOBILIZER STATUS FIX
+   Option A: Update "immobilized.value" when commands reach "delivered" status
+   Option B: Add new field "last_command_executed" with command details
+   Option C: Clearly document that gt06 cannot report this (so we stop expecting it)
+
+2. COMMAND EXECUTION CONFIRMATION
+   - Change status from "delivered" to "completed" when device executes
+   - Add meaningful "response" messages when available
+   - OR confirm that "delivered" means "executed" for gt06 devices
+
+3. FIX DISCONNECTED DEVICE
+   - Device 864540080665904 (Device ID: 239, Vehicle: J00020)
+   - Check backend logs for connection attempts
+   - Provide SMS configuration commands for gt06 setup
+   - Verify device is authorized and activated
+
+4. IMPROVE API DOCUMENTATION
+   - What does "observed: true" mean? (Device can report? Field exists?)
+   - When should we trust "value" vs when is it stale?
+   - Device type capabilities (which types support which states?)
+   - Add webhook/push notifications for command status changes
+
+========================================
+WORKAROUNDS WE'RE USING
+========================================
+
+✓ Tracking lock state via command history (not immobilized.value)
+✓ Assuming "delivered" = "executed" for user feedback
+✓ Showing pending status for 20 minutes after command sent
+✓ Auto-refresh dashboard every 60 seconds to poll for changes
+
+These work, but proper API support would be better!
