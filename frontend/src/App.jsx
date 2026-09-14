@@ -310,7 +310,7 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
         {asset.state && Object.keys(asset.state).length > 0 && (
           <>
             {/* Speed */}
-            {asset.state.speed && asset.state.speed.observed && (
+            {asset.state.speed && asset.state.speed.value != null && (
               <div className="dd-field">
                 <span className="dd-label">⚡ Speed</span>
                 <span className="dd-value">{asset.state.speed.value} {asset.state.speed.unit || 'km/h'}</span>
@@ -318,7 +318,7 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
             )}
             
             {/* Odometer */}
-            {asset.state.odometer && asset.state.odometer.observed && (
+            {asset.state.odometer && asset.state.odometer.value != null && (
               <div className="dd-field">
                 <span className="dd-label">📊 Total Distance</span>
                 <span className="dd-value">{asset.state.odometer.value} {asset.state.odometer.unit || 'km'}</span>
@@ -326,7 +326,7 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
             )}
             
             {/* Signal Strength */}
-            {asset.state.signal_strength && asset.state.signal_strength.observed && (
+            {asset.state.signal_strength && asset.state.signal_strength.value != null && (
               <div className="dd-field">
                 <span className="dd-label">📶 Signal Strength</span>
                 <span className="dd-value">{asset.state.signal_strength.value} {asset.state.signal_strength.unit || 'dBm'}</span>
@@ -334,7 +334,7 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
             )}
             
             {/* GPS Accuracy */}
-            {asset.state.accuracy && asset.state.accuracy.observed && (
+            {asset.state.accuracy && asset.state.accuracy.value != null && (
               <div className="dd-field">
                 <span className="dd-label">🛰️ GPS Accuracy</span>
                 <span className="dd-value">{asset.state.accuracy.value} {asset.state.accuracy.unit || 'm'}</span>
@@ -342,7 +342,7 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
             )}
             
             {/* Bearing */}
-            {asset.state.bearing && asset.state.bearing.observed && (
+            {asset.state.bearing && asset.state.bearing.value != null && (
               <div className="dd-field">
                 <span className="dd-label">🧭 Bearing</span>
                 <span className="dd-value">{asset.state.bearing.value}° {asset.state.bearing.unit || ''}</span>
@@ -350,7 +350,7 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
             )}
             
             {/* Altitude */}
-            {asset.state.altitude && asset.state.altitude.observed && (
+            {asset.state.altitude && asset.state.altitude.value != null && (
               <div className="dd-field">
                 <span className="dd-label">⛰️ Altitude</span>
                 <span className="dd-value">{asset.state.altitude.value} {asset.state.altitude.unit || 'm'}</span>
@@ -358,7 +358,7 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
             )}
             
             {/* Network Operator */}
-            {asset.state.network_operator && asset.state.network_operator.observed && (
+            {asset.state.network_operator && asset.state.network_operator.value != null && (
               <div className="dd-field">
                 <span className="dd-label">📡 Network</span>
                 <span className="dd-value">{asset.state.network_operator.value}</span>
@@ -366,7 +366,7 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
             )}
             
             {/* Connection Type */}
-            {asset.state.connection_type && asset.state.connection_type.observed && (
+            {asset.state.connection_type && asset.state.connection_type.value != null && (
               <div className="dd-field">
                 <span className="dd-label">📶 Connection Type</span>
                 <span className="dd-value">{asset.state.connection_type.value}</span>
