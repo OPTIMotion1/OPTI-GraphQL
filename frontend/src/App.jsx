@@ -278,7 +278,7 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
             <div className="location-actions">
               <button 
                 className="location-btn"
-                onClick={() => window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank')}
+                onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`, '_blank')}
                 title="Open in Google Maps"
               >
                 🗺️ Map
@@ -286,8 +286,8 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
               <button 
                 className="location-btn"
                 onClick={() => {
-                  const mapLink = `https://www.google.com/maps?q=${lat},${lng}`;
-                  const message = `Vehicle: ${asset.name}\n📍 ${mapLink}`;
+                  const mapLink = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+                  const message = `Vehicle: ${asset.name}\n📍 Location: ${mapLink}`;
                   window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
                 }}
                 title="Share via WhatsApp"
@@ -297,11 +297,11 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
               <button 
                 className="location-btn"
                 onClick={() => {
-                  const mapLink = `https://www.google.com/maps?q=${lat},${lng}`;
+                  const mapLink = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
                   navigator.clipboard.writeText(mapLink);
-                  alert('📋 Location copied!');
+                  alert('📋 Location link copied to clipboard!');
                 }}
-                title="Copy location"
+                title="Copy location link"
               >
                 📋 Copy
               </button>

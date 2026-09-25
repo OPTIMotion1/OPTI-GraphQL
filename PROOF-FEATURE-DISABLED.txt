@@ -1,0 +1,119 @@
+========================================
+PROOF: VoltCred Disabled "Asset Management" Feature
+Account: support@optimotion.in
+========================================
+
+ISSUE: Dashboard shows "No assets found" because VoltCred disabled 
+the "Asset Management - Base Platform" feature on our account.
+
+========================================
+STEP 1: LOGIN TO GET TOKEN
+========================================
+
+curl -X POST "https://api.voltcred.com/v2/graphql" \
+  -H "Content-Type: application/json" \
+  -H "Cookie: device=web" \
+  --data-raw '{"query":"mutation Login($email: String!, $password: String!) { sessionCreateV2(data: { email: $email, password: $password }) { token success messageKey } }","variables":{"email":"support@optimotion.in","password":"YOUR_PASSWORD"}}'
+
+Expected Response:
+{
+  "data": {
+    "sessionCreateV2": {
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "success": true,
+      "messageKey": "login_success"
+    }
+  }
+}
+
+SAVE THE TOKEN!
+
+========================================
+STEP 2: TRY TO FETCH ASSETS (THIS FAILS)
+========================================
+
+Replace YOUR_TOKEN with the token from Step 1
+
+curl -X POST "https://api.voltcred.com/v2/graphql" \
+  -H "Content-Type: application/json" \
+  -H "Cookie: authorization=YOUR_TOKEN; device=web" \
+  --data-raw '{"query":"query { assetsWithPagination(limit: 10) { total counts { total moving offline } rows { id name status } } }"}'
+
+ACTUAL ERROR RESPONSE:
+{
+  "errors": [
+    {
+      "message": "Failed to fetch assets: Feature 'Asset Management - Base Platform' is not enabled for your company. Please upgrade your subscription.",
+      "extensions": {
+        "code": "INTERNAL_SERVER_ERROR"
+      }
+    }
+  ]
+}
+
+========================================
+PROOF THAT COMMANDS STILL WORK
+========================================
+
+But we CAN still send commands (different API endpoint):
+
+curl -X POST "https://api.voltcred.com/v2/graphql" \
+  -H "Content-Type: application/json" \
+  -H "Cookie: authorization=YOUR_TOKEN; device=web" \
+  --data-raw '{"query":"mutation { executeDeviceCommand(device_id: 461, command_type: engine_restore) { id command_code status } }"}'
+
+Expected Response (WORKS):
+{
+  "data": {
+    "executeDeviceCommand": {
+      "id": "344",
+      "command_code": "engine_restore",
+      "status": "pending"
+    }
+  }
+}
+
+========================================
+ANALYSIS
+========================================
+
+✅ Login works
+✅ Commands work (executeDeviceCommand)
+❌ Asset listing BLOCKED (assetsWithPagination)
+
+Error message clearly states:
+"Feature 'Asset Management - Base Platform' is not enabled for your company"
+
+This is NOT a code issue - VoltCred disabled this feature on the account!
+
+========================================
+IMPACT
+========================================
+
+1. Dashboard cannot display vehicles
+2. Cannot see vehicle locations
+3. Cannot see vehicle status (moving/offline)
+4. Cannot see device connection status
+
+BUT:
+✅ Can still send lock/unlock commands (if you know device ID)
+
+========================================
+REQUEST TO VOLTCRED
+========================================
+
+Account: support@optimotion.in
+
+Please IMMEDIATELY re-enable "Asset Management - Base Platform" feature:
+1. We need to see vehicle list
+2. We need vehicle locations
+3. We need status information
+4. This is blocking our production dashboard
+
+Questions:
+1. Why was this suddenly disabled?
+2. What subscription plan includes this feature?
+3. Were we supposed to be notified before disabling?
+4. Can you restore access immediately?
+
+This is URGENT - our business operations are stopped!

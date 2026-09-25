@@ -1,0 +1,116 @@
+========================================
+PROOF: VoltCred "superseded" Bug
+Device: 864540081618118 (ID: 449)
+========================================
+
+ISSUE: When sending multiple lock commands, old commands should be marked as "superseded"
+but VoltCred API shows BOTH as "sent"
+
+========================================
+STEP 1: LOGIN TO GET TOKEN
+========================================
+
+curl -X POST "https://api.voltcred.com/v2/graphql" \
+  -H "Content-Type: application/json" \
+  -H "Cookie: device=web" \
+  --data-raw '{"query":"mutation Login($email: String!, $password: String!) { sessionCreateV2(data: { email: $email, password: $password }) { token success messageKey } }","variables":{"email":"support@optimotion.in","password":"YOUR_PASSWORD"}}'
+
+Expected Response:
+{
+  "data": {
+    "sessionCreateV2": {
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "success": true,
+      "messageKey": "login_success"
+    }
+  }
+}
+
+SAVE THE TOKEN FOR NEXT STEPS!
+
+========================================
+STEP 2: GET COMMAND HISTORY FOR DEVICE
+========================================
+
+Replace YOUR_TOKEN with the token from Step 1
+
+curl -X POST "https://api.voltcred.com/v2/graphql" \
+  -H "Content-Type: application/json" \
+  -H "Cookie: authorization=YOUR_TOKEN; device=web" \
+  --data-raw '{"query":"query GetCommands($deviceId: Int!) { deviceCommands(device_id: $deviceId) { id command_code status execution_time response } }","variables":{"deviceId":449}}'
+
+Expected Response (SHOWING THE BUG):
+{
+  "data": {
+    "deviceCommands": [
+      {
+        "id": "302",
+        "command_code": "engine_cutoff",
+        "status": "sent",              <-- ✅ NEWER COMMAND (10:45:48)
+        "execution_time": "2026-09-16T10:45:48",
+        "response": null
+      },
+      {
+        "id": "269",
+        "command_code": "engine_cutoff",
+        "status": "sent",              <-- ❌ SHOULD BE "superseded" (10:21:02)
+        "execution_time": "2026-09-16T10:21:02",
+        "response": null
+      }
+    ]
+  }
+}
+
+========================================
+ANALYSIS
+========================================
+
+Command ID 269 (sent at 10:21:02) should have status "superseded"
+because Command ID 302 (sent at 10:45:48) is a newer command of the same type.
+
+BUT BOTH SHOW STATUS "sent"!
+
+This is a VoltCred backend bug - they are not updating old command status
+when a new command is sent.
+
+========================================
+WHAT IT SHOULD LOOK LIKE
+========================================
+
+Correct Response:
+{
+  "data": {
+    "deviceCommands": [
+      {
+        "id": "302",
+        "command_code": "engine_cutoff",
+        "status": "sent",              <-- ✅ CORRECT (newest)
+        "execution_time": "2026-09-16T10:45:48"
+      },
+      {
+        "id": "269",
+        "command_code": "engine_cutoff",
+        "status": "superseded",        <-- ✅ SHOULD BE THIS
+        "execution_time": "2026-09-16T10:21:02"
+      }
+    ]
+  }
+}
+
+========================================
+BUSINESS IMPACT
+========================================
+
+1. Dashboard shows TWO pending lock commands (confusing to users)
+2. Cannot determine which command is actually active
+3. Lock state is ambiguous (is vehicle locked or not?)
+4. Customers lose trust when they see old commands still "pending"
+
+========================================
+REQUEST TO VOLTCRED
+========================================
+
+Please fix the status update logic:
+- When a new command of the same type is sent
+- Mark all previous commands of that type as "superseded"
+- Only the NEWEST command should have status "sent"/"delivered"/"completed"

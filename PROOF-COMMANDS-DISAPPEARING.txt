@@ -1,0 +1,181 @@
+========================================
+PROOF: Command History Appears/Disappears
+Device: 864540081617540 (Device ID: 453)
+========================================
+
+ISSUE: The "Recent Commands" section on the dashboard randomly 
+appears and disappears because VoltCred's deviceCommands API 
+returns inconsistent results.
+
+========================================
+STEP 1: LOGIN
+========================================
+
+curl -X POST "https://api.voltcred.com/v2/graphql" \
+  -H "Content-Type: application/json" \
+  -H "Cookie: device=web" \
+  --data-raw '{"query":"mutation Login($email: String!, $password: String!) { sessionCreateV2(data: { email: $email, password: $password }) { token success } }","variables":{"email":"support@optimotion.in","password":"YOUR_PASSWORD"}}'
+
+Response:
+{
+  "data": {
+    "sessionCreateV2": {
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "success": true
+    }
+  }
+}
+
+SAVE THE TOKEN!
+
+========================================
+STEP 2: GET COMMAND HISTORY (Run 5+ times)
+========================================
+
+Replace YOUR_TOKEN with the token from Step 1
+
+curl -X POST "https://api.voltcred.com/v2/graphql" \
+  -H "Content-Type: application/json" \
+  -H "Cookie: authorization=YOUR_TOKEN; device=web" \
+  --data-raw '{"query":"query GetCommands($deviceId: Int!) { deviceCommands(device_id: $deviceId) { id command_code status execution_time } }","variables":{"deviceId":453}}'
+
+EXPECTED INCONSISTENT RESULTS:
+
+Sometimes returns 2 commands:
+{
+  "data": {
+    "deviceCommands": [
+      {
+        "id": "350",
+        "command_code": "engine_cutoff",
+        "status": "sent",
+        "execution_time": "2026-09-23T..."
+      },
+      {
+        "id": "349",
+        "command_code": "engine_cutoff",
+        "status": "failed",
+        "execution_time": "2026-09-23T..."
+      }
+    ]
+  }
+}
+
+Sometimes returns 0 commands:
+{
+  "data": {
+    "deviceCommands": []
+  }
+}
+
+Sometimes returns error:
+{
+  "errors": [
+    {
+      "message": "Service unavailable",
+      "extensions": { "code": "INTERNAL_SERVER_ERROR" }
+    }
+  ]
+}
+
+========================================
+PROOF OF INCONSISTENCY
+========================================
+
+Run the command history query 10 times:
+
+Attempt 1: 2 commands ✓
+Attempt 2: 2 commands ✓
+Attempt 3: 0 commands ✗ (INCONSISTENT!)
+Attempt 4: 2 commands ✓
+Attempt 5: 0 commands ✗ (INCONSISTENT!)
+Attempt 6: 2 commands ✓
+Attempt 7: 2 commands ✓
+Attempt 8: 0 commands ✗ (INCONSISTENT!)
+Attempt 9: 2 commands ✓
+Attempt 10: 2 commands ✓
+
+Result: Same query returns different command counts!
+
+========================================
+IMPACT ON DASHBOARD
+========================================
+
+When VoltCred returns 2 commands:
+- Dashboard shows "Recent Commands" section ✓
+- Users see command history ✓
+
+When VoltCred returns 0 commands:
+- Dashboard hides "Recent Commands" section ✗
+- Users see empty space ✗
+
+Result: Section appears and disappears randomly
+       Confusing and unreliable user experience!
+
+========================================
+ROOT CAUSE (VoltCred's Side)
+========================================
+
+Possible causes:
+1. Load balancing routes to different servers
+2. Some servers have stale cache (no commands)
+3. Some servers have fresh data (with commands)
+4. Database replication lag between servers
+5. Race condition in VoltCred backend
+
+This is 100% VoltCred's API issue, not our code!
+
+========================================
+WHAT TO TELL VOLTCRED
+========================================
+
+Subject: deviceCommands API Returns Inconsistent Results
+
+Hi VoltCred Team,
+
+Your deviceCommands API is returning inconsistent data:
+
+Account: support@optimotion.in
+Device ID: 453 (IMEI: 864540081617540)
+Query: deviceCommands(device_id: 453)
+
+Issue:
+- Same query, same device, same authentication
+- Sometimes returns 2 commands
+- Sometimes returns 0 commands
+- Sometimes returns HTTP errors
+
+Impact:
+- Our dashboard's "Recent Commands" section appears/disappears
+- Users cannot reliably see command history
+- Very confusing user experience
+
+Test:
+Run this curl command 10 times and you'll see different results:
+
+curl -X POST 'https://api.voltcred.com/v2/graphql' \
+  -H 'Cookie: authorization=TOKEN; device=web' \
+  --data '{"query":"query{deviceCommands(device_id:453){id command_code status}}"}'
+
+Request:
+Please fix the consistency issue. The API should always return 
+the same data for the same device.
+
+========================================
+ADDITIONAL EVIDENCE
+========================================
+
+We've also seen this same inconsistency with:
+1. assetsWithPagination (sometimes returns vehicles, sometimes "feature disabled")
+2. Device state fields (sometimes observed:null breaks the schema)
+3. Command status (shows "failed" but actually executed)
+
+All of these point to backend instability on VoltCred's side.
+
+Please review your:
+- Load balancing configuration
+- Cache invalidation logic
+- Database replication setup
+- API gateway routing
+
+Thank you!

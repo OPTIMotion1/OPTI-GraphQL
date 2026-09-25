@@ -5,7 +5,7 @@
 # Run each section to see the actual API responses
 
 $ApiUrl = "https://api.voltcred.com/v2/graphql"
-$Email = "hello@optimotion.in"
+$Email = "support@optimotion.in"
 # Password: (user will enter when running)
 
 Write-Host "`n=== VOLTCRED API ISSUES DEMONSTRATION ===" -ForegroundColor Cyan
@@ -16,7 +16,7 @@ Write-Host "This script will show actual API responses proving the issues`n" -Fo
 # ========================================
 Write-Host "`n[STEP 1] Logging in to get authentication token..." -ForegroundColor Green
 
-$Password = Read-Host "Enter VoltCred password for hello@optimotion.in" -AsSecureString
+$Password = Read-Host "Enter VoltCred password for support@optimotion.in" -AsSecureString
 $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Password)
 $PlainPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
 
@@ -266,3 +266,15 @@ Write-Host "curl 'https://api.voltcred.com/v2/graphql' \\" -ForegroundColor Gray
 Write-Host "  -H 'Content-Type: application/json' \\" -ForegroundColor Gray
 Write-Host "  -H 'Cookie: authorization=$Token; device=web' \\" -ForegroundColor Gray
 Write-Host "  --data-raw '{""query"":""query { deviceCommands(device_id: 245) { id command_code status execution_time response } }""}'`n" -ForegroundColor Gray
+
+
+
+
+
+curl -i -X POST "https://api.voltcred.com/v2/graphql" -H "Content-Type: application/json" -H "Cookie: device=web" --data-raw "{\"query\":\"mutation Login($email: String!, $password: String!) { sessionCreateV2(data: { email: $email, password: $password }) { token success messageKey } }\",\"variables\":{\"email\":\"support@optimotion.in\",\"password\":\"YOUR_PASSWORD\"}}"
+curl -i -X POST "https://api.voltcred.com/v2/graphql" -H "Content-Type: application/json" -H "Cookie: authorization=YOUR_TOKEN; device=web" --data-raw "{\"query\":\"query { assetsWithPagination(limit: 20) { rows { name iot_devices { id device_id iot_type_code connection_status last_communication state { key value observed writable updated_at stale } } } } }\"}"
+curl -i -X POST "https://api.voltcred.com/v2/graphql" -H "Content-Type: application/json" -H "Cookie: authorization=YOUR_TOKEN; device=web" --data-raw "{\"query\":\"query { deviceCommands(device_id: 245) { id command_code status execution_time response } }\"}"
+curl.exe -X POST "https://api.voltcred.com/v2/graphql" ^
+  -H "Content-Type: application/json" ^
+  -H "Cookie: authorization=%TOKEN%; device=web" ^
+  --data-raw "{\"query\":\"query { deviceCommands(device_id: 449) { id command_code status execution_time response } }\"}"
