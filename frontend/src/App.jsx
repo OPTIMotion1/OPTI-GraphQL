@@ -204,6 +204,7 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
   let isPendingLock = false;
   let isPendingUnlock = false;
   let pendingMinutesAgo = 0;
+  let isLocked = lockState?.[device.device_id] === 'locked'; // Start with VoltCred API state
   
   if (asset.command_history && asset.command_history.length > 0) {
     // Get most recent command
@@ -220,10 +221,20 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
         isPendingUnlock = recentCmd.command_code === 'engine_restore';
       }
     }
+    
+    // If most recent command is completed, use it to determine current lock state
+    if (recentCmd.status === 'completed') {
+      if (recentCmd.command_code === 'engine_cutoff') {
+        // Lock completed - vehicle is now locked
+        isLocked = true;
+      } else if (recentCmd.command_code === 'engine_restore') {
+        // Unlock completed - vehicle is now unlocked
+        isLocked = false;
+      }
+    }
   }
   
-  // Determine lock state: VoltCred API (if available) OR pending state
-  const isLocked = lockState?.[device.device_id] === 'locked' || isPendingLock;
+  // Determine lock state: completed commands OR VoltCred API OR pending state
   const isUnlocked = !isLocked || isPendingUnlock;
 
   return (
