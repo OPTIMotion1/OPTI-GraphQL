@@ -247,23 +247,9 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
             <span className={`tag ${isBms ? "tag-bms" : "tag-gps"}`}>{device.iot_type_code}</span>
           )}
           {!isBms && (
-            <>
-              {isPendingLock && (
-                <span className="tag tag-pending" style={{ background: '#FFA500', color: 'white', animation: 'pulse 2s infinite' }}>
-                  ⏳ Lock Pending ({pendingMinutesAgo}m ago)
-                </span>
-              )}
-              {isPendingUnlock && (
-                <span className="tag tag-pending" style={{ background: '#4CAF50', color: 'white', animation: 'pulse 2s infinite' }}>
-                  ⏳ Unlock Pending ({pendingMinutesAgo}m ago)
-                </span>
-              )}
-              {!isPendingLock && !isPendingUnlock && (
-                <span className={`tag ${isLocked ? "tag-locked" : "tag-unlocked"}`}>
-                  {isLocked ? "🔒 Locked" : "🔓 Unlocked"}
-                </span>
-              )}
-            </>
+            <span className={`tag ${isLocked ? "tag-locked" : "tag-unlocked"}`}>
+              {isLocked ? "🔒 Locked" : "🔓 Unlocked"}
+            </span>
           )}
         </div>
         <span className={`conn-pill conn-${conn.tone}`}>
@@ -422,40 +408,23 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
         )}
       </div>
       <div className="device-commands-full">
-        {(isLocked || isPendingLock) ? (
-          // Show Unlock when locked OR when lock is pending
-          <>
-            <button
-              className="cmd-btn cmd-safe"
-              disabled={status?.state === "pending"}
-              title="Mobilize — restore the engine"
-              onClick={() => onCommand(device.id, asset.id, 'engine_restore', device.device_id)}>
-              🔓 Unlock
-            </button>
-            {isPendingLock && (
-              <div style={{ fontSize: 11, color: '#FFA500', marginTop: 4 }}>
-                ⚠️ Lock command sent {pendingMinutesAgo}m ago. Wait {20 - pendingMinutesAgo}m more.
-              </div>
-            )}
-          </>
+        {isLocked ? (
+          <button
+            className="cmd-btn cmd-safe"
+            disabled={status?.state === "pending"}
+            title="Mobilize — restore the engine"
+            onClick={() => onCommand(device.id, asset.id, 'engine_restore', device.device_id)}>
+            🔓 Unlock
+          </button>
         ) : (
-          // Show Lock when unlocked OR when unlock is pending
-          <>
-            <button
-              className="cmd-btn cmd-danger"
-              disabled={status?.state === "pending"}
-              title="Immobilize — cut the engine"
-              onClick={() => onCommand(device.id, asset.id, 'engine_cutoff', device.device_id)}>
-              🔒 Lock
-            </button>
-            {isPendingUnlock && (
-              <div style={{ fontSize: 11, color: '#4CAF50', marginTop: 4 }}>
-                ⚠️ Unlock command sent {pendingMinutesAgo}m ago. Wait {20 - pendingMinutesAgo}m more.
-              </div>
-            )}
-          </>
+          <button
+            className="cmd-btn cmd-danger"
+            disabled={status?.state === "pending"}
+            title="Immobilize — cut the engine"
+            onClick={() => onCommand(device.id, asset.id, 'engine_cutoff', device.device_id)}>
+            🔒 Lock
+          </button>
         )}
-        {/* Always show Locate button */}
         <button
           className="cmd-btn cmd-safe"
           disabled={status?.state === "pending"}
