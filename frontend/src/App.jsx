@@ -418,7 +418,7 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
               className="cmd-btn cmd-safe"
               disabled={status?.state === "pending"}
               title="Mobilize — restore the engine"
-              onClick={() => onCommand(device.id, device.id, 'engine_restore', device.device_id)}>
+              onClick={() => onCommand(device.id, asset.id, 'engine_restore', device.device_id)}>
               🔓 Unlock
             </button>
             {isPendingLock && (
@@ -434,7 +434,7 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
               className="cmd-btn cmd-danger"
               disabled={status?.state === "pending"}
               title="Immobilize — cut the engine"
-              onClick={() => onCommand(device.id, device.id, 'engine_cutoff', device.device_id)}>
+              onClick={() => onCommand(device.id, asset.id, 'engine_cutoff', device.device_id)}>
               🔒 Lock
             </button>
             {isPendingUnlock && (
@@ -449,7 +449,7 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
           className="cmd-btn cmd-safe"
           disabled={status?.state === "pending"}
           title="Request a fresh GPS fix"
-          onClick={() => onCommand(device.id, device.id, 'location_request', device.device_id)}>
+          onClick={() => onCommand(device.id, asset.id, 'location_request', device.device_id)}>
           📍 Locate
         </button>
       </div>
