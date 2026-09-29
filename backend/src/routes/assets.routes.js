@@ -72,13 +72,19 @@ router.get("/", async (req, res) => {
           const commands = await getDeviceCommands(primaryDevice.id);
           return {
             ...asset,
-            command_history: commands || []
+            command_history: commands || [],
+            command_history_error: null
           };
         }
         return asset;
       } catch (error) {
-        console.warn(`[Assets] Could not fetch commands for ${asset.name}:`, error.message);
-        return asset;
+        // VoltCred API returns HTTP 503 intermittently - log but don't fail the entire request
+        console.warn(`[Assets] ⚠️  VoltCred API error fetching commands for ${asset.name} (device ${asset.iot_devices?.find(d => d.is_primary)?.id}):`, error.message);
+        return {
+          ...asset,
+          command_history: [], // Return empty array instead of undefined
+          command_history_error: error.message // Include error for frontend awareness
+        };
       }
     });
     

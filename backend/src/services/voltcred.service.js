@@ -321,8 +321,9 @@ async function sendDeviceCommand(deviceId, commandType) {
 // ── Get device commands ───────────────────────────────────────────────────────
 // Returns command history for a specific device
 // Shows all commands sent to the device with their current status
+// Includes retry logic for VoltCred API intermittent 503 errors
 
-async function getDeviceCommands(deviceId) {
+async function getDeviceCommands(deviceId, retries = 2) {
   const query = `
     query GetDeviceCommands($deviceId: Int!) {
       deviceCommands(device_id: $deviceId) {
@@ -335,8 +336,20 @@ async function getDeviceCommands(deviceId) {
     }
   `;
 
-  const data = await graphqlRequest(query, { deviceId: parseInt(deviceId, 10) });
-  return data?.deviceCommands || [];
+  try {
+    const data = await graphqlRequest(query, { deviceId: parseInt(deviceId, 10) });
+    return data?.deviceCommands || [];
+  } catch (error) {
+    // VoltCred API returns HTTP 503 intermittently - retry up to 2 times
+    if (retries > 0 && (error.response?.status === 503 || error.message?.includes('503'))) {
+      console.warn(`[VoltCred] HTTP 503 error fetching commands for device ${deviceId}, retrying... (${retries} retries left)`);
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+      return getDeviceCommands(deviceId, retries - 1);
+    }
+    
+    // If all retries exhausted or different error, throw
+    throw error;
+  }
 }
 
 module.exports = { login, getAssets, sendDeviceCommand, getDeviceCommands, graphqlRequest };
