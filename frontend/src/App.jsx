@@ -222,13 +222,13 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
       }
     }
     
-    // If most recent command is completed, use it to determine current lock state
-    if (recentCmd.status === 'completed') {
+    // If most recent command is completed OR sent, use it to determine current lock state
+    if (recentCmd.status === 'completed' || recentCmd.status === 'sent' || recentCmd.status === 'delivered') {
       if (recentCmd.command_code === 'engine_cutoff') {
-        // Lock completed - vehicle is now locked
+        // Lock completed/sent - vehicle is now locked (or will be locked)
         isLocked = true;
       } else if (recentCmd.command_code === 'engine_restore') {
-        // Unlock completed - vehicle is now unlocked
+        // Unlock completed/sent - vehicle is now unlocked (or will be unlocked)
         isLocked = false;
       }
     }
