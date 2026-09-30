@@ -448,14 +448,29 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
               const hoursAgo = Math.floor(minutesAgo / 60);
               const timeStr = hoursAgo > 24 ? `${Math.floor(hoursAgo / 24)}d ago` : hoursAgo > 0 ? `${hoursAgo}h ago` : `${minutesAgo}m ago`;
               
+              // HARDWARE-BASED STATUS: Check if command actually executed based on immobilized state
+              const immobilized = asset.state?.immobilized?.value;
+              let actualStatus = cmd.status;
+              
+              // Override status if hardware confirms command executed
+              if (cmd.command_code === 'engine_cutoff' && immobilized === true) {
+                // Lock command + device is locked = command succeeded
+                actualStatus = 'completed';
+              } else if (cmd.command_code === 'engine_restore' && immobilized === false) {
+                // Unlock command + device is unlocked = command succeeded
+                actualStatus = 'completed';
+              }
+              // For location_request, use VoltCred's status as-is (no hardware confirmation)
+              
               const statusColor = {
                 'pending': '#FFA500',
                 'sent': '#4CAF50',
                 'delivered': '#4CAF50',
                 'superseded': '#999',
                 'completed': '#4CAF50',
-                'failed': '#F44336'
-              }[cmd.status] || '#666';
+                'failed': '#F44336',
+                'timeout': '#F44336'
+              }[actualStatus] || '#666';
               
               const statusEmoji = {
                 'pending': '⏳',
@@ -463,8 +478,9 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
                 'delivered': '✓',
                 'superseded': '×',
                 'completed': '✓',
-                'failed': '⚠'
-              }[cmd.status] || '•';
+                'failed': '⚠',
+                'timeout': '⚠'
+              }[actualStatus] || '•';
               
               const commandName = {
                 'engine_cutoff': '🔒 Lock',
@@ -480,7 +496,7 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
                       background: statusColor + '20',
                       color: statusColor
                     }}>
-                      {statusEmoji} {cmd.status}
+                      {statusEmoji} {actualStatus}
                     </span>
                     <span className="command-history-time">{timeStr}</span>
                   </div>
