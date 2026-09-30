@@ -955,7 +955,7 @@ function DashboardTab({ assets, counts, onCommand, commandStatus, lockState, per
             {filtered.map((a) => {
               const isOnline = a.status === "moving" || a.status === "idle";
               const ignition = a.state?.ignition;
-              const immobiliser = a.state?.immobiliser_status || a.state?.immobilizer_status;
+              const immobiliser = a.state?.immobilized; // Use 'immobilized' field for actual hardware state
               const soc = a.state?.soc || a.state?.remaining_capacity;
               const speed = a.location?.speed;
               const staleLocation = a.location && a.location.timestamp && ((Date.now() / 1000) - a.location.timestamp > 3600);
@@ -2586,8 +2586,10 @@ export default function App() {
     const state = {};
     assets.forEach(asset => {
       asset.iot_devices?.forEach(device => {
-        const immo = asset.state?.immobiliser_status || asset.state?.immobilizer_status;
-        // Only trust VoltCred API - don't assume based on commands sent
+        // Use 'immobilized' field - this is the ACTUAL hardware state from VoltCred
+        // This is reliable even when command status shows "timeout" or "failed"
+        const immo = asset.state?.immobilized;
+        
         if (immo && immo.value === true && immo.observed === true) {
           state[device.device_id] = 'locked';
         } else if (immo && immo.value === false && immo.observed === true) {
