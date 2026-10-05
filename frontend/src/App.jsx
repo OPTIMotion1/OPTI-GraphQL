@@ -1056,6 +1056,82 @@ function VehiclesTab({ assets, permBlocked, loading, onCommand, commandStatus, l
   );
 }
 
+// ── SETRACK TAB ──────────────────────────────────────────────────────────────
+function SeTrackTab() {
+  const { authenticatedFetch } = useAuthenticatedFetch();
+  const [devices, setDevices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    async function loadSeTrackDevices() {
+      try {
+        const res = await authenticatedFetch('/api/setrack');
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error);
+        setDevices(data.assets || []);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadSeTrackDevices();
+  }, [authenticatedFetch]);
+
+  if (loading) return <p className="muted">Loading SeTrack devices…</p>;
+  if (error) return <div className="error-banner">❌ Error: {error}</div>;
+  if (devices.length === 0) return <p className="muted">No SeTrack devices found.</p>;
+
+  return (
+    <>
+      <div className="cards">
+        <div className="card"><span className="card-label">Total Devices</span><span className="card-value">{devices.length}</span></div>
+        <div className="card card-online-tone"><span className="card-label">Online</span><span className="card-value">{devices.filter(d => d.status !== 'offline').length}</span></div>
+        <div className="card card-offline-tone"><span className="card-label">Offline</span><span className="card-value">{devices.filter(d => d.status === 'offline').length}</span></div>
+      </div>
+
+      <div className="asset-grid" style={{ marginTop: 16 }}>
+        {devices.map((device) => (
+          <div key={device.id} className={`asset-card ${device.status !== 'offline' ? 'card-online' : 'card-offline'}`}>
+            <div className="asset-header">
+              <div>
+                <div className="asset-name">{device.name || 'Unnamed'}</div>
+                <div className="asset-meta">
+                  <span className="tag tag-mono">{device.iot_devices?.[0]?.device_id}</span>
+                  <span className="tag">SeTrack</span>
+                </div>
+              </div>
+              <span className={`status-pill ${device.status !== 'offline' ? 'pill-online' : 'pill-offline'}`}>
+                {device.status}
+              </span>
+            </div>
+            <div className="asset-location">
+              📍 {device.location?.latitude ? `${device.location.latitude.toFixed(5)}, ${device.location.longitude.toFixed(5)}` : 'No location'}
+            </div>
+            {device.state && (
+              <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12 }}>
+                {device.state.ignition?.value !== null && (
+                  <div><strong>Ignition:</strong> {device.state.ignition.value ? '🔥 ON' : '❄️ OFF'}</div>
+                )}
+                {device.state.battery_level?.value !== null && (
+                  <div><strong>Battery:</strong> {device.state.battery_level.value}%</div>
+                )}
+                {device.state.speed?.value !== null && (
+                  <div><strong>Speed:</strong> {device.state.speed.value} km/h</div>
+                )}
+                {device.state.odometer?.value !== null && (
+                  <div><strong>Distance:</strong> {(device.state.odometer.value / 1000).toFixed(1)} km</div>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
 // ── COMMANDS TAB ─────────────────────────────────────────────────────────────
 function CommandsTab({ assets, authenticatedFetch }) {
   const [deviceId, setDeviceId]       = useState("");
