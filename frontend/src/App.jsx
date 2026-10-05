@@ -1222,31 +1222,6 @@ function DashboardTab({ assets, counts, onCommand, commandStatus, lockState, per
     </>
   );
 }
-                      </span>
-                    )}
-                    {speed > 0 && (
-                      <span title={`Current speed: ${speed.toFixed(1)} km/h`}>
-                        🏎️{speed.toFixed(0)}
-                      </span>
-                    )}
-                  </span>
-                  <span style={{ fontSize: 12 }}>
-                    {a.location ? (
-                      <span style={{ opacity: staleLocation ? 0.5 : 1 }}>
-                        {a.location.address?.substring(0, 40) || `${a.location.latitude.toFixed(4)}, ${a.location.longitude.toFixed(4)}`}
-                        {staleLocation && <span style={{ color: '#F59E0B', marginLeft: 4 }} title="GPS data older than 1 hour">⚠️</span>}
-                      </span>
-                    ) : '—'}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </>
-  );
-}
 
 // ── VEHICLES TAB ─────────────────────────────────────────────────────────────
 function VehiclesTab({ assets, permBlocked, loading, onCommand, commandStatus, lockState }) {
