@@ -644,6 +644,7 @@ function TrackerTab({ assets, onCommand, commandStatus, lockState }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Filter assets
   const filtered = useMemo(() => {
@@ -690,9 +691,38 @@ function TrackerTab({ assets, onCommand, commandStatus, lockState }) {
   };
 
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - 120px)', gap: 16 }}>
+    <div style={{ display: 'flex', height: 'calc(100vh - 120px)', gap: 16, position: 'relative' }}>
       {/* LEFT: Map */}
-      <div style={{ flex: '1 1 60%', position: 'relative', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border2)' }}>
+      <div style={{ 
+        flex: sidebarCollapsed ? '1 1 100%' : '1 1 60%', 
+        position: 'relative', 
+        borderRadius: 8, 
+        overflow: 'hidden', 
+        border: '1px solid var(--border2)',
+        transition: 'flex 0.3s ease'
+      }}>
+        {/* Sidebar Toggle Button */}
+        <button
+          onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+          style={{
+            position: 'absolute',
+            top: 16,
+            right: 16,
+            zIndex: 1000,
+            padding: '8px 12px',
+            background: 'var(--bg2)',
+            border: '1px solid var(--border2)',
+            borderRadius: 6,
+            cursor: 'pointer',
+            fontSize: 14,
+            fontWeight: 500,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+          }}
+          title={sidebarCollapsed ? 'Show vehicle list' : 'Hide vehicle list'}
+        >
+          {sidebarCollapsed ? '☰ Show List' : '✕ Hide List'}
+        </button>
+        
         <MapContainer 
           center={positions[0] ? [positions[0].location.latitude, positions[0].location.longitude] : DEFAULT_CENTER} 
           zoom={12} 
@@ -727,7 +757,14 @@ function TrackerTab({ assets, onCommand, commandStatus, lockState }) {
       </div>
 
       {/* RIGHT: Vehicle List */}
-      <div style={{ flex: '1 1 40%', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {!sidebarCollapsed && (
+        <div style={{ 
+          flex: '1 1 40%', 
+          display: 'flex', 
+          flexDirection: 'column', 
+          gap: 12,
+          transition: 'all 0.3s ease'
+        }}>
         {/* Header with stats donut */}
         <div style={{ background: 'var(--bg2)', padding: 16, borderRadius: 8, border: '1px solid var(--border2)' }}>
           <h3 style={{ margin: 0, marginBottom: 12, fontSize: 18 }}>GPS Tracker</h3>
@@ -960,7 +997,8 @@ function TrackerTab({ assets, onCommand, commandStatus, lockState }) {
             })
           )}
         </div>
-      </div>
+        </div>
+      )}
     </div>
   );
 }
