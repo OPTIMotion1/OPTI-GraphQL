@@ -102,25 +102,46 @@ function useAssets(authenticatedFetch) {
 
   const load = useCallback(async () => {
     try {
-      const res  = await authenticatedFetch('/api/assets');
-      const data = await res.json();
-      if (data.permissionBlocked) {
+      // Fetch both VoltCred and SeTrack devices in parallel
+      const [voltCredRes, seTrackRes] = await Promise.all([
+        authenticatedFetch('/api/assets'),
+        authenticatedFetch('/api/setrack')
+      ]);
+      
+      const voltCredData = await voltCredRes.json();
+      const seTrackData = await seTrackRes.json();
+      
+      // Handle VoltCred permission blocking
+      if (voltCredData.permissionBlocked) {
         setPermBlocked(true); setAssets([]); setCounts(null); setTotal(0); setError(null);
-      } else if (!data.success) {
-        throw new Error(data.error || "Failed to load assets");
-      } else {
-        setAssets(data.assets || []); 
-        setCounts(data.counts || null);
-        setTotal(data.total || 0);
-        setPermBlocked(false); 
-        setError(null);
+        return;
       }
+      
+      // Merge assets from both sources
+      const voltCredAssets = voltCredData.success ? (voltCredData.assets || []) : [];
+      const seTrackAssets = seTrackData.success ? (seTrackData.assets || []) : [];
+      const mergedAssets = [...voltCredAssets, ...seTrackAssets];
+      
+      // Merge counts
+      const mergedCounts = {
+        moving: (voltCredData.counts?.moving || 0) + (seTrackData.counts?.moving || 0),
+        idle: (voltCredData.counts?.idle || 0) + (seTrackData.counts?.idle || 0),
+        stopped: (voltCredData.counts?.stopped || 0) + (seTrackData.counts?.stopped || 0),
+        offline: (voltCredData.counts?.offline || 0) + (seTrackData.counts?.offline || 0)
+      };
+      
+      const mergedTotal = (voltCredData.total || 0) + (seTrackData.total || 0);
+      
+      setAssets(mergedAssets); 
+      setCounts(mergedCounts);
+      setTotal(mergedTotal);
+      setPermBlocked(false); 
+      setError(null);
       setLastFetched(new Date());
     } catch (err) {
       console.error('[Frontend] Error loading assets:', err.message);
       setError(err.message);
       // Don't clear assets on error - keep showing last successful data
-      // setAssets([]);
     } finally {
       setLoading(false);
     }
@@ -406,22 +427,33 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
         )}
       </div>
       <div className="device-commands-full">
-        {isLocked ? (
-          <button
-            className="cmd-btn cmd-safe"
-            disabled={status?.state === "pending"}
-            title="Mobilize — restore the engine"
-            onClick={() => onCommand(device.id, asset.id, 'engine_restore', device.device_id)}>
-            🔓 Unlock
-          </button>
-        ) : (
-          <button
-            className="cmd-btn cmd-danger"
-            disabled={status?.state === "pending"}
-            title="Immobilize — cut the engine"
-            onClick={() => onCommand(device.id, asset.id, 'engine_cutoff', device.device_id)}>
-            🔒 Lock
-          </button>
+        {/* Only show lock/unlock for VoltCred devices */}
+        {asset.source !== 'setrack' && (
+          <>
+            {isLocked ? (
+              <button
+                className="cmd-btn cmd-safe"
+                disabled={status?.state === "pending"}
+                title="Mobilize — restore the engine"
+                onClick={() => onCommand(device.id, asset.id, 'engine_restore', device.device_id)}>
+                🔓 Unlock
+              </button>
+            ) : (
+              <button
+                className="cmd-btn cmd-danger"
+                disabled={status?.state === "pending"}
+                title="Immobilize — cut the engine"
+                onClick={() => onCommand(device.id, asset.id, 'engine_cutoff', device.device_id)}>
+                🔒 Lock
+              </button>
+            )}
+          </>
+        )}
+        {/* SeTrack devices show tracking-only message */}
+        {asset.source === 'setrack' && (
+          <div style={{ padding: '12px', background: '#3b82f620', borderRadius: '8px', fontSize: '14px', color: 'var(--text2)' }}>
+            📍 SeTrack device - Tracking only (no remote commands available)
+          </div>
         )}
         <button
           className="cmd-btn cmd-safe"
@@ -537,6 +569,12 @@ function AssetCard({ asset, onCommand, commandStatus, lockState }) {
             )}
             {asset.asset_type ? <span className="tag">{asset.asset_type}</span> : <span className="tag tag-muted">type unset</span>}
             <span className="tag">{devices.length} device{devices.length === 1 ? "" : "s"}</span>
+            {/* Platform indicator badge */}
+            {asset.source === 'setrack' ? (
+              <span className="tag" style={{ backgroundColor: '#3b82f6', color: 'white' }}>SeTrack</span>
+            ) : (
+              <span className="tag" style={{ backgroundColor: '#10b981', color: 'white' }}>VoltCred</span>
+            )}
           </div>
         </div>
         <div className="asset-header-right">
