@@ -645,6 +645,14 @@ function TrackerTab({ assets, onCommand, commandStatus, lockState }) {
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [statusFilter, setStatusFilter] = useState("all");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  // Handle window resize for mobile detection
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Filter assets
   const filtered = useMemo(() => {
@@ -691,22 +699,29 @@ function TrackerTab({ assets, onCommand, commandStatus, lockState }) {
   };
 
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - 120px)', gap: 16, position: 'relative' }}>
+    <div style={{ 
+      display: 'flex', 
+      flexDirection: isMobile ? 'column' : 'row',
+      height: 'calc(100vh - 120px)', 
+      gap: isMobile ? 0 : 16, 
+      position: 'relative' 
+    }}>
       {/* LEFT: Map */}
       <div style={{ 
-        flex: sidebarCollapsed ? '1 1 100%' : '1 1 60%', 
+        flex: sidebarCollapsed ? '1 1 100%' : (isMobile ? '1 1 50%' : '1 1 60%'),
         position: 'relative', 
         borderRadius: 8, 
         overflow: 'hidden', 
         border: '1px solid var(--border2)',
-        transition: 'flex 0.3s ease'
+        transition: 'all 0.3s ease',
+        minHeight: isMobile ? '300px' : 'auto'
       }}>
         {/* Sidebar Toggle Button */}
         <button
           onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
           style={{
             position: 'absolute',
-            top: 16,
+            top: isMobile ? 70 : 16,
             right: 16,
             zIndex: 1000,
             padding: '8px 12px',
@@ -720,7 +735,7 @@ function TrackerTab({ assets, onCommand, commandStatus, lockState }) {
           }}
           title={sidebarCollapsed ? 'Show vehicle list' : 'Hide vehicle list'}
         >
-          {sidebarCollapsed ? '☰ Show List' : '✕ Hide List'}
+          {sidebarCollapsed ? '☰' : '✕'}
         </button>
         
         <MapContainer 
@@ -759,11 +774,13 @@ function TrackerTab({ assets, onCommand, commandStatus, lockState }) {
       {/* RIGHT: Vehicle List */}
       {!sidebarCollapsed && (
         <div style={{ 
-          flex: '1 1 40%', 
+          flex: isMobile ? '1 1 auto' : '1 1 40%',
           display: 'flex', 
           flexDirection: 'column', 
           gap: 12,
-          transition: 'all 0.3s ease'
+          transition: 'all 0.3s ease',
+          maxHeight: isMobile ? '50vh' : 'auto',
+          overflowY: isMobile ? 'auto' : 'visible'
         }}>
         {/* Header with stats donut */}
         <div style={{ background: 'var(--bg2)', padding: 16, borderRadius: 8, border: '1px solid var(--border2)' }}>
