@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { key: "dashboard", label: "🗺️ Dashboard" },
   { key: "tracker",   label: "📡 Tracker"   },
   { key: "vehicles",  label: "🚗 VoltCred"  },
+  { key: "setrack",   label: "🚙 SeTrack"   },
   { key: "activity",  label: "📋 Activity"  },
   { key: "settings",  label: "⚙️ Settings"  },
 ];
@@ -2749,6 +2750,7 @@ export default function App() {
         {activeTab === "dashboard" && <DashboardTab assets={assets} counts={counts} permBlocked={permBlocked} onCommand={requestCommand} commandStatus={commandStatus} lockState={lockState} />}
         {activeTab === "tracker"   && <TrackerTab   assets={assets} onCommand={requestCommand} commandStatus={commandStatus} lockState={lockState} />}
         {activeTab === "vehicles"  && <VehiclesTab  assets={assets} permBlocked={permBlocked} loading={loading} onCommand={requestCommand} commandStatus={commandStatus} lockState={lockState} />}
+        {activeTab === "setrack"   && <SeTrackTab   />}
         {activeTab === "commands"  && <CommandsTab  assets={assets} authenticatedFetch={authenticatedFetch} />}
         {activeTab === "autocutoff" && <AutoCutoffTab authenticatedFetch={authenticatedFetch} user={user} />}
         {activeTab === "bulknotify" && <BulkNotifyTab authenticatedFetch={authenticatedFetch} />}
