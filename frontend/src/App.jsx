@@ -873,12 +873,25 @@ function DashboardTab({ assets, counts, onCommand, commandStatus, lockState, per
   const [statusFilter, setStatusFilter] = useState('all');
   const { query, setQuery, filtered: searchFiltered } = useFilteredAssets(assets);
   const [actionMenuOpen, setActionMenuOpen] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
   
   // Apply status filter on top of search
   const filtered = useMemo(() => {
     if (statusFilter === 'all') return searchFiltered;
     return searchFiltered.filter(a => a.status === statusFilter);
   }, [searchFiltered, statusFilter]);
+  
+  // Calculate pagination
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const paginatedData = filtered.slice(startIndex, endIndex);
+  
+  // Reset to page 1 when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter, query]);
 
   if (permBlocked) return (
     <div className="perm-notice">
@@ -975,7 +988,7 @@ function DashboardTab({ assets, counts, onCommand, commandStatus, lockState, per
       {/* Data Table */}
       <div style={{ overflowX: 'auto', background: 'var(--bg2)', borderRadius: 8, border: '1px solid var(--border2)' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-          <thead>
+          <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
             <tr style={{ background: 'var(--bg3)', borderBottom: '2px solid var(--border2)' }}>
               <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text2)' }}>Device</th>
               <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text2)' }}>Latitude</th>
@@ -991,14 +1004,14 @@ function DashboardTab({ assets, counts, onCommand, commandStatus, lockState, per
             </tr>
           </thead>
           <tbody>
-            {filtered.length === 0 ? (
+            {paginatedData.length === 0 ? (
               <tr>
                 <td colSpan={11} style={{ padding: 32, textAlign: 'center', color: 'var(--text3)' }}>
                   No vehicles match your search
                 </td>
               </tr>
             ) : (
-              filtered.map((asset) => {
+              paginatedData.map((asset) => {
                 const device = asset.iot_devices?.[0];
                 const deviceId = device?.device_id || asset.id;
                 const lat = asset.location?.latitude;
@@ -1230,8 +1243,54 @@ function DashboardTab({ assets, counts, onCommand, commandStatus, lockState, per
         </table>
       </div>
       
-      <div style={{ marginTop: 16, fontSize: 13, color: 'var(--text3)', textAlign: 'right' }}>
-        Showing {filtered.length} of {assets.length} vehicles
+      {/* Pagination Controls */}
+      <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+        <div style={{ fontSize: 13, color: 'var(--text3)' }}>
+          Showing {startIndex + 1}-{Math.min(endIndex, filtered.length)} of {filtered.length} vehicles
+          {filtered.length !== assets.length && ` (filtered from ${assets.length} total)`}
+        </div>
+        
+        {totalPages > 1 && (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              style={{
+                padding: '6px 12px',
+                background: currentPage === 1 ? 'var(--bg3)' : 'var(--accent)',
+                color: currentPage === 1 ? 'var(--text3)' : 'white',
+                border: 'none',
+                borderRadius: 6,
+                cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                fontSize: 13,
+                fontWeight: 500
+              }}
+            >
+              ← Previous
+            </button>
+            
+            <span style={{ fontSize: 13, color: 'var(--text2)', minWidth: 80, textAlign: 'center' }}>
+              Page {currentPage} of {totalPages}
+            </span>
+            
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              style={{
+                padding: '6px 12px',
+                background: currentPage === totalPages ? 'var(--bg3)' : 'var(--accent)',
+                color: currentPage === totalPages ? 'var(--text3)' : 'white',
+                border: 'none',
+                borderRadius: 6,
+                cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                fontSize: 13,
+                fontWeight: 500
+              }}
+            >
+              Next →
+            </button>
+          </div>
+        )}
       </div>
     </>
   );
