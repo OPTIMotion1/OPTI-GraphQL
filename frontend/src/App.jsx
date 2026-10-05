@@ -922,10 +922,10 @@ function TrackerTab({ assets, onCommand, commandStatus, lockState }) {
                         {asset.status || 'unknown'}
                       </span>
                     </div>
-                    {asset.state?.ignition?.value !== null && (
+                    {asset.state?.ignition?.value !== undefined && asset.state?.ignition?.value !== null && (
                       <div>
                         <span style={{ color: 'var(--text3)' }}>Ignition: </span>
-                        <span>{asset.state.ignition.value ? '🔥 ON' : '❄️ OFF'}</span>
+                        <span>{asset.state?.ignition?.value ? '🔥 ON' : '❄️ OFF'}</span>
                       </div>
                     )}
                   </div>
