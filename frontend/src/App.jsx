@@ -566,7 +566,7 @@ function DeviceRow({ device, asset, onCommand, commandStatus, lockState }) {
   );
 }
 
-function AssetCard({ asset, onCommand, commandStatus, lockState }) {
+function AssetCard({ asset, onCommand, commandStatus, lockState, hidePlatformBadge = false }) {
   const devices  = asset.iot_devices || [];
   const isOnline = asset.status === "moving" || asset.status === "idle";
   const [expanded, setExpanded] = useState(false);
@@ -582,11 +582,15 @@ function AssetCard({ asset, onCommand, commandStatus, lockState }) {
             )}
             {asset.asset_type ? <span className="tag">{asset.asset_type}</span> : <span className="tag tag-muted">type unset</span>}
             <span className="tag">{devices.length} device{devices.length === 1 ? "" : "s"}</span>
-            {/* Platform indicator badge */}
-            {asset.source === 'setrack' ? (
-              <span className="tag" style={{ backgroundColor: '#3b82f6', color: 'white' }}>SeTrack</span>
-            ) : (
-              <span className="tag" style={{ backgroundColor: '#10b981', color: 'white' }}>VoltCred</span>
+            {/* Platform indicator badge - only show if not hidden */}
+            {!hidePlatformBadge && (
+              <>
+                {asset.source === 'setrack' ? (
+                  <span className="tag" style={{ backgroundColor: '#3b82f6', color: 'white' }}>SeTrack</span>
+                ) : (
+                  <span className="tag" style={{ backgroundColor: '#10b981', color: 'white' }}>VoltCred</span>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -1308,7 +1312,7 @@ function VehiclesTab({ assets, permBlocked, loading, onCommand, commandStatus, l
       {filtered.length === 0 ? <p className="muted" style={{ marginTop: 14 }}>No vehicles match.</p> : (
         <div className="asset-grid" style={{ marginTop: 16 }}>
           {filtered.map((a) => (
-            <AssetCard key={a.id} asset={a} onCommand={onCommand} commandStatus={commandStatus} lockState={lockState} />
+            <AssetCard key={a.id} asset={a} onCommand={onCommand} commandStatus={commandStatus} lockState={lockState} hidePlatformBadge={true} />
           ))}
         </div>
       )}
