@@ -10,6 +10,7 @@ const commandRoutes = require("./routes/command.routes");
 const activityRoutes = require("./routes/activity.routes");
 const autoCutoffRoutes = require("./routes/auto-cutoff.routes");
 const bulkNotifyRoutes = require("./routes/bulk-notify.routes");
+const setrackRoutes = require("./routes/setrack.routes");
 
 const app = express();
 
@@ -36,6 +37,7 @@ app.use("/api/command", commandLimiter);
 // Routes
 app.use("/api/auth", authRoutes);  // Login, logout - NO AUTH REQUIRED
 app.use("/api/assets", assetsRoutes);  // Requires auth
+app.use("/api/setrack", setrackRoutes);  // SeTrack devices
 app.use("/api/command", commandRoutes);  // Requires auth + role check
 app.use("/api/activity", activityRoutes);  // Requires auth
 app.use("/api/auto-cutoff", autoCutoffRoutes);  // Requires auth + admin role
