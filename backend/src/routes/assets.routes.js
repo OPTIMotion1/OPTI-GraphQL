@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { getAssets, getDeviceCommands } = require("../services/voltcred.service");
+const { reverseGeocode } = require("../services/geocoding.service");
 const fs = require('fs');
 const path = require('path');
 // const { verifyToken } = require("../middleware/auth.middleware");
@@ -90,6 +91,22 @@ router.get("/", async (req, res) => {
     
     enrichedAssets = await Promise.all(commandHistoryPromises);
     console.log(`[Assets] ✓ Command history fetched for all devices`);
+    
+    // FINALLY: Enrich with addresses from reverse geocoding (for assets without address)
+    console.log(`[Assets] Enriching addresses via reverse geocoding...`);
+    for (const asset of enrichedAssets) {
+      if (asset.location?.latitude && asset.location?.longitude && !asset.location?.address) {
+        const address = await reverseGeocode(asset.location.latitude, asset.location.longitude);
+        if (address) {
+          asset.location.address = address;
+          console.log(`[Assets] ✓ Geocoded ${asset.name}: ${address.substring(0, 50)}...`);
+        }
+        // Rate limit: 1 request per second for free Nominatim API
+        await new Promise(resolve => setTimeout(resolve, 1100));
+      }
+    }
+    console.log(`[Assets] ✓ Address enrichment complete`);
+    
     console.log(`[Assets] ✓ Returning ${enrichedAssets.length} assets with ONLY VoltCred data (no rental integration)`)
     
     // Return success with counts and total

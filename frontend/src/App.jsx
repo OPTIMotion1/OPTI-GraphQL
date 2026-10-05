@@ -990,7 +990,8 @@ function DashboardTab({ assets, counts, onCommand, commandStatus, lockState, per
                 const deviceId = device?.device_id || asset.id;
                 const lat = asset.location?.latitude;
                 const lng = asset.location?.longitude;
-                const address = asset.location?.address || '—';
+                // Show address if available, otherwise show lat/long coordinates
+                const address = asset.location?.address || (lat && lng ? `${lat.toFixed(4)}, ${lng.toFixed(4)}` : '—');
                 const fixTime = asset.location?.timestamp ? formatDateTime(new Date(asset.location.timestamp * 1000)) : '—';
                 const serverTime = device?.last_communication ? formatDateTime(device.last_communication) : '—';
                 const speed = asset.location?.speed !== undefined ? `${asset.location.speed.toFixed(1)} km/h` : '0.00 km/h';

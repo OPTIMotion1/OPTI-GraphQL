@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { reverseGeocode } = require('./geocoding.service');
 
 const SETRACK_API_URL = process.env.SETRACK_API_URL || 'https://mvts1.millitrack.com/api/middleMan/getDeviceInfo';
 const SETRACK_ACCESS_TOKEN = process.env.SETRACK_ACCESS_TOKEN;
@@ -23,7 +24,9 @@ async function getSeTrackDevices() {
     console.log(`[SeTrack] Fetched ${devices.length} devices`);
     
     // Transform SeTrack format to match VoltCred-like structure
-    const transformedDevices = devices.map(device => {
+    const transformedDevices = [];
+    
+    for (const device of devices) {
       // Determine status based on lastStatusUpdate
       const lastUpdate = new Date(device.lastStatusUpdate);
       const now = new Date();
@@ -40,7 +43,16 @@ async function getSeTrackDevices() {
         }
       }
       
-      return {
+      // Reverse geocode if no address provided
+      let address = device.address;
+      if (!address && device.latitude && device.longitude) {
+        address = await reverseGeocode(device.latitude, device.longitude);
+        console.log(`[SeTrack] ✓ Geocoded ${device.name}: ${address?.substring(0, 50)}...`);
+        // Rate limit: 1 request per second
+        await new Promise(resolve => setTimeout(resolve, 1100));
+      }
+      
+      transformedDevices.push({
         id: `setrack_${device.deviceUniqueId}`,
         name: device.name,
         license_plate: device.name,
@@ -49,7 +61,7 @@ async function getSeTrackDevices() {
         location: {
           latitude: device.latitude,
           longitude: device.longitude,
-          address: device.address,
+          address: address,
           speed: device.speed,
           bearing: device.course,
           timestamp: device.fixTime
@@ -114,8 +126,8 @@ async function getSeTrackDevices() {
         }],
         // Source indicator
         source: 'setrack'
-      };
-    });
+      });
+    }
     
     return {
       devices: transformedDevices,
