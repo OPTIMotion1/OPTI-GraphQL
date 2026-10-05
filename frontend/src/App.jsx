@@ -103,13 +103,24 @@ function useAssets(authenticatedFetch) {
   const load = useCallback(async () => {
     try {
       // Fetch both VoltCred and SeTrack devices in parallel
-      const [voltCredRes, seTrackRes] = await Promise.all([
+      const [voltCredRes, seTrackRes] = await Promise.allSettled([
         authenticatedFetch('/api/assets'),
         authenticatedFetch('/api/setrack')
       ]);
       
-      const voltCredData = await voltCredRes.json();
-      const seTrackData = await seTrackRes.json();
+      // Handle VoltCred response
+      const voltCredData = voltCredRes.status === 'fulfilled' ? await voltCredRes.value.json() : { success: false, error: voltCredRes.reason?.message };
+      
+      // Handle SeTrack response
+      const seTrackData = seTrackRes.status === 'fulfilled' ? await seTrackRes.value.json() : { success: false, error: seTrackRes.reason?.message };
+      
+      // Log any errors
+      if (!voltCredData.success) {
+        console.error('[Frontend] VoltCred API error:', voltCredData.error);
+      }
+      if (!seTrackData.success) {
+        console.error('[Frontend] SeTrack API error:', seTrackData.error);
+      }
       
       // Handle VoltCred permission blocking
       if (voltCredData.permissionBlocked) {
@@ -117,10 +128,12 @@ function useAssets(authenticatedFetch) {
         return;
       }
       
-      // Merge assets from both sources
+      // Merge assets from both sources (only include successful ones)
       const voltCredAssets = voltCredData.success ? (voltCredData.assets || []) : [];
       const seTrackAssets = seTrackData.success ? (seTrackData.assets || []) : [];
       const mergedAssets = [...voltCredAssets, ...seTrackAssets];
+      
+      console.log(`[Frontend] Loaded ${voltCredAssets.length} VoltCred + ${seTrackAssets.length} SeTrack = ${mergedAssets.length} total vehicles`);
       
       // Merge counts
       const mergedCounts = {

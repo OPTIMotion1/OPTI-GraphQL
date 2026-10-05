@@ -43,14 +43,8 @@ async function getSeTrackDevices() {
         }
       }
       
-      // Reverse geocode if no address provided
-      let address = device.address;
-      if (!address && device.latitude && device.longitude) {
-        address = await reverseGeocode(device.latitude, device.longitude);
-        console.log(`[SeTrack] ✓ Geocoded ${device.name}: ${address?.substring(0, 50)}...`);
-        // Rate limit: 1 request per second
-        await new Promise(resolve => setTimeout(resolve, 1100));
-      }
+      // Use existing address or null (don't wait for geocoding)
+      const address = device.address || null;
       
       transformedDevices.push({
         id: `setrack_${device.deviceUniqueId}`,

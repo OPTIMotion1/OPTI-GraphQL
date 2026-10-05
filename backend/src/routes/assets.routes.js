@@ -93,21 +93,31 @@ router.get("/", async (req, res) => {
     console.log(`[Assets] ✓ Command history fetched for all devices`);
     
     // FINALLY: Enrich with addresses from reverse geocoding (for assets without address)
-    console.log(`[Assets] Enriching addresses via reverse geocoding...`);
-    for (const asset of enrichedAssets) {
-      if (asset.location?.latitude && asset.location?.longitude && !asset.location?.address) {
-        const address = await reverseGeocode(asset.location.latitude, asset.location.longitude);
-        if (address) {
-          asset.location.address = address;
-          console.log(`[Assets] ✓ Geocoded ${asset.name}: ${address.substring(0, 50)}...`);
-        }
-        // Rate limit: 1 request per second for free Nominatim API
-        await new Promise(resolve => setTimeout(resolve, 1100));
-      }
-    }
-    console.log(`[Assets] ✓ Address enrichment complete`);
+    // Do this asynchronously without blocking the response
+    console.log(`[Assets] Starting background address enrichment for ${enrichedAssets.length} vehicles...`);
     
-    console.log(`[Assets] ✓ Returning ${enrichedAssets.length} assets with ONLY VoltCred data (no rental integration)`)
+    // Don't wait for geocoding - return immediately and geocode in background
+    Promise.all(
+      enrichedAssets.map(async (asset, index) => {
+        if (asset.location?.latitude && asset.location?.longitude && !asset.location?.address) {
+          try {
+            // Add delay based on index to respect rate limits
+            await new Promise(resolve => setTimeout(resolve, index * 1100));
+            const address = await reverseGeocode(asset.location.latitude, asset.location.longitude);
+            if (address) {
+              asset.location.address = address;
+              console.log(`[Assets] ✓ Geocoded ${asset.name}: ${address.substring(0, 50)}...`);
+            }
+          } catch (error) {
+            console.warn(`[Assets] ⚠️ Geocoding failed for ${asset.name}:`, error.message);
+          }
+        }
+      })
+    ).catch(err => {
+      console.error('[Assets] Background geocoding error:', err.message);
+    });
+    
+    console.log(`[Assets] ✓ Returning ${enrichedAssets.length} assets (addresses will be enriched in background)`)
     
     // Return success with counts and total
     res.json({ 
