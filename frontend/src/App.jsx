@@ -639,31 +639,36 @@ function ConfirmModal({ pending, onConfirm, onCancel }) {
   );
 }
 
-// ── TRACKER TAB — full-screen map with search ────────────────────────────────
+// ── TRACKER TAB — split screen: map left, vehicle list right ─────────────────
 function TrackerTab({ assets, onCommand, commandStatus, lockState }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedAsset, setSelectedAsset] = useState(null);
-  const [flyTo, setFlyTo] = useState(null);
-  const [moreDetailsExpanded, setMoreDetailsExpanded] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("all");
 
-  const positions = assets.filter((a) => a.location?.latitude && a.location?.longitude);
-
-  const handleSearch = (q) => {
-    setSearchQuery(q);
-    if (!q) { setSelectedAsset(null); setFlyTo(null); return; }
-    const lower = q.toLowerCase();
-    const match = assets.find((a) => {
-      const haystack = [a.name, a.license_plate, a.id,
-        ...(a.iot_devices || []).map((d) => d.device_id)
-      ].filter(Boolean).join(" ").toLowerCase();
-      return haystack.includes(lower);
-    });
-    if (match && match.location?.latitude) {
-      setSelectedAsset(match);
-      setFlyTo([match.location.latitude, match.location.longitude]);
-      setMoreDetailsExpanded(false);
+  // Filter assets
+  const filtered = useMemo(() => {
+    let result = assets;
+    
+    // Apply status filter
+    if (statusFilter !== "all") {
+      result = result.filter(a => a.status === statusFilter);
     }
-  };
+    
+    // Apply search
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      result = result.filter((a) => {
+        const haystack = [a.name, a.license_plate, a.id,
+          ...(a.iot_devices || []).map((d) => d.device_id)
+        ].filter(Boolean).join(" ").toLowerCase();
+        return haystack.includes(q);
+      });
+    }
+    
+    return result;
+  }, [assets, searchQuery, statusFilter]);
+
+  const positions = filtered.filter((a) => a.location?.latitude && a.location?.longitude);
 
   const getIcon = (a) => {
     if (a.status === "moving" || a.status === "idle") return ICON_MOVING;
@@ -671,26 +676,41 @@ function TrackerTab({ assets, onCommand, commandStatus, lockState }) {
     return ICON_UNKNOWN;
   };
 
-  const primaryDevice = (selectedAsset?.iot_devices || [])[0];
+  const handleVehicleClick = (asset) => {
+    setSelectedAsset(asset);
+  };
+
+  // Count by status
+  const counts = {
+    all: assets.length,
+    moving: assets.filter(a => a.status === 'moving').length,
+    idle: assets.filter(a => a.status === 'idle').length,
+    stopped: assets.filter(a => a.status === 'stopped').length,
+    offline: assets.filter(a => a.status === 'offline').length
+  };
 
   return (
-    <div className="tracker-wrap">
-      <div className="tracker-search-bar">
-        <span className="search-icon">🔍</span>
-        <input className="tracker-search-input" type="text"
-          placeholder="Search vehicle by name, IMEI, or license plate…"
-          value={searchQuery} onChange={(e) => handleSearch(e.target.value)} />
-        {searchQuery && <button className="search-clear" onClick={() => handleSearch("")}>✕</button>}
-        {searchQuery && !selectedAsset && <span className="tracker-no-result">No vehicle found</span>}
-      </div>
-
-      <div className="tracker-map-container">
-        <MapContainer center={DEFAULT_CENTER} zoom={12} style={{ height: "100%", width: "100%" }}>
+    <div style={{ display: 'flex', height: 'calc(100vh - 120px)', gap: 16 }}>
+      {/* LEFT: Map */}
+      <div style={{ flex: '1 1 60%', position: 'relative', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border2)' }}>
+        <MapContainer 
+          center={positions[0] ? [positions[0].location.latitude, positions[0].location.longitude] : DEFAULT_CENTER} 
+          zoom={12} 
+          style={{ height: "100%", width: "100%" }}
+        >
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="© OpenStreetMap" />
-          {flyTo && <MapFlyTo center={flyTo} zoom={15} />}
+          {selectedAsset?.location?.latitude && (
+            <MapFlyTo center={[selectedAsset.location.latitude, selectedAsset.location.longitude]} zoom={15} />
+          )}
           {positions.map((a) => (
-            <Marker key={a.id} position={[a.location.latitude, a.location.longitude]} icon={getIcon(a)}
-              eventHandlers={{ click: () => { setSelectedAsset(a); setMoreDetailsExpanded(false); } }}>
+            <Marker 
+              key={a.id} 
+              position={[a.location.latitude, a.location.longitude]} 
+              icon={getIcon(a)}
+              eventHandlers={{ 
+                click: () => handleVehicleClick(a)
+              }}
+            >
               <Popup>
                 <div className="map-popup">
                   <strong>{a.name}</strong>
@@ -698,15 +718,7 @@ function TrackerTab({ assets, onCommand, commandStatus, lockState }) {
                     {a.status || "unknown"}
                   </span>
                   <div className="popup-row"><span>📍</span><span>{a.location.latitude.toFixed(5)}, {a.location.longitude.toFixed(5)}</span></div>
-                  {a.location.address && <div className="popup-row"><span>🏠</span><span>{a.location.address}</span></div>}
-                  {(a.iot_devices || []).map((d) => (
-                    <div key={d.id} className="popup-row">
-                      <span>📡</span><span>{d.device_id} — {d.connection_status || "unknown"}</span>
-                    </div>
-                  ))}
-                  <div className="popup-row muted">
-                    Last comm: {fmtTime((a.iot_devices || [])[0]?.last_communication) || "Never"}
-                  </div>
+                  {a.location.address && <div className="popup-row" style={{ fontSize: 11 }}><span>🏠</span><span>{a.location.address.substring(0, 50)}...</span></div>}
                 </div>
               </Popup>
             </Marker>
@@ -714,160 +726,241 @@ function TrackerTab({ assets, onCommand, commandStatus, lockState }) {
         </MapContainer>
       </div>
 
-      {selectedAsset && (
-        <div className="tracker-sidebar">
-          <div className="tracker-sidebar-head">
-            <span className="tracker-vehicle-name">{selectedAsset.name || "Unnamed"}</span>
-            <button className="tracker-close" onClick={() => setSelectedAsset(null)}>✕</button>
-          </div>
-
-          {/* IMEI / Device ID */}
-          {primaryDevice && (
-            <div className="tracker-imei-box">
-              <span className="tracker-imei-label">IMEI / Device ID</span>
-              <span className="tracker-imei-value">{primaryDevice.device_id}</span>
-            </div>
-          )}
-
-          {/* Key Info Grid */}
-          <div className="tracker-key-info">
-            <div className="ti-info-item">
-              <span className="ti-label">Fix Time</span>
-              <span className="ti-value">{fmtTime(primaryDevice?.last_communication) || "Never"}</span>
-            </div>
-            <div className="ti-info-item">
-              <span className="ti-label">Status</span>
-              <span className={`status-pill ${selectedAsset.status === "moving" ? "pill-online" : "pill-offline"}`}>
-                {selectedAsset.status || "unknown"}
-              </span>
-            </div>
-            <div className="ti-info-item">
-              <span className="ti-label">Address</span>
-              <span className="ti-value">{selectedAsset.location?.address || "—"}</span>
-            </div>
-            <div className="ti-info-item">
-              <span className="ti-label">Speed</span>
-              <span className="ti-value ti-muted">Not available *</span>
-            </div>
-            <div className="ti-info-item">
-              <span className="ti-label">Total Distance</span>
-              <span className="ti-value ti-muted">Not available *</span>
-            </div>
-            <div className="ti-info-item">
-              <span className="ti-label">Connection</span>
-              <span className={`conn-pill conn-${(CONN_LABELS[primaryDevice?.connection_status] || CONN_LABELS.unknown).tone}`}>
-                <span className={`conn-dot dot-${(CONN_LABELS[primaryDevice?.connection_status] || CONN_LABELS.unknown).tone}`} />
-                {(CONN_LABELS[primaryDevice?.connection_status] || CONN_LABELS.unknown).label}
-              </span>
-            </div>
-          </div>
-
-          {/* More Details Button */}
-          <button className="tracker-more-details-btn" onClick={() => setMoreDetailsExpanded(!moreDetailsExpanded)}>
-            {moreDetailsExpanded ? "▼" : "▶"} More Details
-          </button>
-
-          {/* Expanded Details */}
-          {moreDetailsExpanded && (
-            <div className="tracker-more-details">
-              <div className="ti-field"><span className="ti-label">Asset ID</span>
-                <span className="ti-value">{selectedAsset.id}</span>
-              </div>
-              <div className="ti-field"><span className="ti-label">Asset Type</span>
-                <span className="ti-value">{selectedAsset.asset_type || "—"}</span>
-              </div>
-              <div className="ti-field"><span className="ti-label">License Plate</span>
-                <span className="ti-value">{selectedAsset.license_plate || "—"}</span>
-              </div>
-              <div className="ti-field"><span className="ti-label">Coordinates</span>
-                <span className="ti-value">
-                  {selectedAsset.location?.latitude ? `${selectedAsset.location.latitude.toFixed(5)}, ${selectedAsset.location.longitude.toFixed(5)}` : "No GPS"}
-                </span>
-                {selectedAsset.location?.latitude && (
-                  <div className="location-actions" style={{ marginTop: '8px' }}>
-                    <button 
-                      className="location-btn location-maps"
-                      onClick={() => window.open(`https://www.google.com/maps?q=${selectedAsset.location.latitude},${selectedAsset.location.longitude}`, '_blank')}
-                      title="Open in Google Maps"
-                    >
-                      🗺️ View on Map
-                    </button>
-                    <button 
-                      className="location-btn location-whatsapp"
-                      onClick={() => {
-                        const mapLink = `https://www.google.com/maps?q=${selectedAsset.location.latitude},${selectedAsset.location.longitude}`;
-                        const message = `Vehicle Location: ${selectedAsset.name}\n${mapLink}`;
-                        window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
-                      }}
-                      title="Share via WhatsApp"
-                    >
-                      💬 WhatsApp
-                    </button>
-                    <button 
-                      className="location-btn location-copy"
-                      onClick={() => {
-                        const mapLink = `https://www.google.com/maps?q=${selectedAsset.location.latitude},${selectedAsset.location.longitude}`;
-                        navigator.clipboard.writeText(mapLink);
-                        alert('📋 Location link copied!');
-                      }}
-                      title="Copy Google Maps link"
-                    >
-                      📋 Copy
-                    </button>
-                  </div>
-                )}
-              </div>
-              {primaryDevice && (
-                <>
-                  <div className="ti-field"><span className="ti-label">Device Name</span>
-                    <span className="ti-value">{primaryDevice.name || "—"}</span>
-                  </div>
-                  <div className="ti-field"><span className="ti-label">Device Type</span>
-                    <span className="ti-value">{primaryDevice.iot_type_code || "—"}</span>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
-          {/* Command Buttons */}
-          <div className="tracker-commands">
-            {(selectedAsset.iot_devices || []).flatMap((d) => {
-              const isLocked = lockState?.[d.device_id] === 'locked';
-              const isBms = d.iot_type_code === 'battery_bms';
-              
-              if (isBms) return [];
-              
-              return [
-                isLocked ? (
-                  <button key={`${d.id}-unlock`}
-                    className="cmd-btn cmd-safe"
-                    title="Mobilize — restore the engine"
-                    onClick={() => onCommand(d.id, d.id, 'engine_restore', d.device_id)}>
-                    🔓 Unlock
-                  </button>
-                ) : (
-                  <button key={`${d.id}-lock`}
-                    className="cmd-btn cmd-danger"
-                    title="Immobilize — cut the engine"
-                    onClick={() => onCommand(d.id, d.id, 'engine_cutoff', d.device_id)}>
-                    🔒 Lock
-                  </button>
-                ),
-                <button key={`${d.id}-locate`}
-                  className="cmd-btn cmd-safe"
-                  title="Request a fresh GPS fix"
-                  onClick={() => onCommand(d.id, d.id, 'location_request', d.device_id)}>
-                  📍 Locate
+      {/* RIGHT: Vehicle List */}
+      <div style={{ flex: '1 1 40%', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {/* Header with stats donut */}
+        <div style={{ background: 'var(--bg2)', padding: 16, borderRadius: 8, border: '1px solid var(--border2)' }}>
+          <h3 style={{ margin: 0, marginBottom: 12, fontSize: 18 }}>GPS Tracker</h3>
+          
+          {/* Status filter chips */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+            {['all', 'moving', 'idle', 'stopped', 'offline'].map(status => {
+              const statusColors = {
+                all: '#6366f1',
+                moving: '#22D37A',
+                idle: '#3B82F6',
+                stopped: '#F59E0B',
+                offline: '#EF4444'
+              };
+              return (
+                <button
+                  key={status}
+                  onClick={() => setStatusFilter(status)}
+                  style={{
+                    padding: '4px 12px',
+                    borderRadius: 12,
+                    border: `1px solid ${statusColors[status]}`,
+                    background: statusFilter === status ? statusColors[status] : 'transparent',
+                    color: statusFilter === status ? 'white' : statusColors[status],
+                    fontSize: 11,
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    textTransform: 'capitalize'
+                  }}
+                >
+                  {status} {counts[status]}
                 </button>
-              ];
+              );
             })}
           </div>
 
-          {/* Disclaimer for unavailable fields */}
-          <p className="tracker-disclaimer">* Not available in VoltCred GraphQL schema. Contact VoltCred to enable these fields.</p>
+          {/* Search */}
+          <input
+            type="text"
+            placeholder="🔍 Search here..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '8px 12px',
+              borderRadius: 6,
+              border: '1px solid var(--border2)',
+              background: 'var(--bg1)',
+              fontSize: 13
+            }}
+          />
         </div>
-      )}
+
+        {/* Vehicle list - scrollable */}
+        <div style={{ 
+          flex: 1, 
+          overflowY: 'auto', 
+          display: 'flex', 
+          flexDirection: 'column', 
+          gap: 8 
+        }}>
+          {filtered.length === 0 ? (
+            <div style={{ padding: 32, textAlign: 'center', color: 'var(--text3)' }}>
+              No vehicles found
+            </div>
+          ) : (
+            filtered.map((asset) => {
+              const device = asset.iot_devices?.[0];
+              const isSelected = selectedAsset?.id === asset.id;
+              const isLocked = lockState?.[device?.device_id] === 'locked';
+              const lat = asset.location?.latitude;
+              const lng = asset.location?.longitude;
+              
+              const displayName = (() => {
+                if (asset.license_plate && asset.license_plate !== 'false' && !/^\d{15}$/.test(asset.license_plate)) {
+                  return asset.license_plate;
+                }
+                if (asset.name && asset.name !== 'false' && !/^\d{15}$/.test(asset.name)) {
+                  return asset.name;
+                }
+                return `Device ${device?.device_id || asset.id}`;
+              })();
+
+              return (
+                <div
+                  key={asset.id}
+                  onClick={() => handleVehicleClick(asset)}
+                  style={{
+                    background: isSelected ? 'var(--accent)15' : 'var(--bg2)',
+                    border: isSelected ? '2px solid var(--accent)' : '1px solid var(--border2)',
+                    borderRadius: 8,
+                    padding: 12,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isSelected) e.currentTarget.style.background = 'var(--bg3)';
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isSelected) e.currentTarget.style.background = 'var(--bg2)';
+                  }}
+                >
+                  {/* Vehicle header */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: 8 }}>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>
+                        {displayName}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'monospace' }}>
+                        {device?.device_id || asset.id}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      {/* Platform badge */}
+                      <span style={{
+                        fontSize: 10,
+                        padding: '2px 6px',
+                        borderRadius: 4,
+                        background: asset.source === 'setrack' ? '#3b82f620' : '#10b98120',
+                        color: asset.source === 'setrack' ? '#3b82f6' : '#10b981',
+                        fontWeight: 500
+                      }}>
+                        {asset.source === 'setrack' ? 'SeTrack' : 'VoltCred'}
+                      </span>
+                      {/* Lock status icon */}
+                      {asset.source !== 'setrack' && (
+                        <span style={{ fontSize: 16 }}>
+                          {isLocked ? '🔒' : '🔓'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Location */}
+                  <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 8, display: 'flex', gap: 4 }}>
+                    <span>📍</span>
+                    <span style={{ flex: 1 }}>
+                      {asset.location?.address?.substring(0, 50) || 
+                       (lat && lng ? `${lat.toFixed(4)}, ${lng.toFixed(4)}` : 'No location')}
+                    </span>
+                  </div>
+
+                  {/* Quick stats */}
+                  <div style={{ display: 'flex', gap: 12, fontSize: 11 }}>
+                    <div>
+                      <span style={{ color: 'var(--text3)' }}>Status: </span>
+                      <span style={{
+                        padding: '2px 6px',
+                        borderRadius: 4,
+                        background: asset.status === 'moving' || asset.status === 'idle' ? '#22D37A20' : '#EF444420',
+                        color: asset.status === 'moving' || asset.status === 'idle' ? '#22D37A' : '#EF4444',
+                        fontWeight: 500,
+                        fontSize: 10
+                      }}>
+                        {asset.status || 'unknown'}
+                      </span>
+                    </div>
+                    {asset.state?.ignition?.value !== null && (
+                      <div>
+                        <span style={{ color: 'var(--text3)' }}>Ignition: </span>
+                        <span>{asset.state.ignition.value ? '🔥 ON' : '❄️ OFF'}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Action buttons - show on selected */}
+                  {isSelected && lat && lng && (
+                    <div style={{ marginTop: 12, display: 'flex', gap: 6 }}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.open(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`, '_blank');
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: '6px 8px',
+                          borderRadius: 6,
+                          border: '1px solid var(--border2)',
+                          background: 'var(--bg3)',
+                          fontSize: 11,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        🗺️ Map
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const mapLink = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+                          const message = `Vehicle: ${displayName}\n📍 ${mapLink}`;
+                          window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: '6px 8px',
+                          borderRadius: 6,
+                          border: '1px solid var(--border2)',
+                          background: 'var(--bg3)',
+                          fontSize: 11,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        💬 Share
+                      </button>
+                      {asset.source !== 'setrack' && device && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onCommand(device.id, asset.id, isLocked ? 'engine_restore' : 'engine_cutoff', device.device_id);
+                          }}
+                          style={{
+                            flex: 1,
+                            padding: '6px 8px',
+                            borderRadius: 6,
+                            border: 'none',
+                            background: isLocked ? 'var(--accent)' : '#EF4444',
+                            color: 'white',
+                            fontSize: 11,
+                            fontWeight: 500,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {isLocked ? '🔓 Unlock' : '🔒 Lock'}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
     </div>
   );
 }
