@@ -1057,8 +1057,7 @@ function VehiclesTab({ assets, permBlocked, loading, onCommand, commandStatus, l
 }
 
 // ── SETRACK TAB ──────────────────────────────────────────────────────────────
-function SeTrackTab() {
-  const { authenticatedFetch } = useAuthenticatedFetch();
+function SeTrackTab({ authenticatedFetch }) {
   const [devices, setDevices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -2826,7 +2825,7 @@ export default function App() {
         {activeTab === "dashboard" && <DashboardTab assets={assets} counts={counts} permBlocked={permBlocked} onCommand={requestCommand} commandStatus={commandStatus} lockState={lockState} />}
         {activeTab === "tracker"   && <TrackerTab   assets={assets} onCommand={requestCommand} commandStatus={commandStatus} lockState={lockState} />}
         {activeTab === "vehicles"  && <VehiclesTab  assets={assets} permBlocked={permBlocked} loading={loading} onCommand={requestCommand} commandStatus={commandStatus} lockState={lockState} />}
-        {activeTab === "setrack"   && <SeTrackTab   />}
+        {activeTab === "setrack"   && <SeTrackTab   authenticatedFetch={authenticatedFetch} />}
         {activeTab === "commands"  && <CommandsTab  assets={assets} authenticatedFetch={authenticatedFetch} />}
         {activeTab === "autocutoff" && <AutoCutoffTab authenticatedFetch={authenticatedFetch} user={user} />}
         {activeTab === "bulknotify" && <BulkNotifyTab authenticatedFetch={authenticatedFetch} />}
