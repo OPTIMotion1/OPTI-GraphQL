@@ -14,10 +14,7 @@ const DEFAULT_CENTER = [17.522624444444443, 78.41514388888889];
 const NAV_ITEMS = [
   { key: "dashboard", label: "🗺️ Dashboard" },
   { key: "tracker",   label: "📡 Tracker"   },
-  { key: "vehicles",  label: "🚗 Vehicles"  },
-  { key: "commands",  label: "⚡ Commands"  },
-  { key: "autocutoff", label: "🤖 Auto-Cutoff" },
-  { key: "bulknotify", label: "📤 Bulk Notify" },
+  { key: "vehicles",  label: "🚗 VoltCred"  },
   { key: "activity",  label: "📋 Activity"  },
   { key: "settings",  label: "⚙️ Settings"  },
 ];
