@@ -859,21 +859,13 @@ function TrackerTab({ assets, onCommand, commandStatus, lockState }) {
 function DashboardTab({ assets, counts, onCommand, commandStatus, lockState, permBlocked }) {
   const [statusFilter, setStatusFilter] = useState('all');
   const { query, setQuery, filtered: searchFiltered } = useFilteredAssets(assets);
+  const [actionMenuOpen, setActionMenuOpen] = useState(null);
   
   // Apply status filter on top of search
   const filtered = useMemo(() => {
     if (statusFilter === 'all') return searchFiltered;
     return searchFiltered.filter(a => a.status === statusFilter);
   }, [searchFiltered, statusFilter]);
-  
-  const positions = filtered.filter((a) => a.location?.latitude && a.location?.longitude);
-
-  const getIcon = (a) => {
-    if (a.status === "moving") return ICON_MOVING;
-    if (a.status === "idle") return ICON_MOVING;
-    if (a.status === "offline") return ICON_OFFLINE;
-    return ICON_UNKNOWN;
-  };
 
   if (permBlocked) return (
     <div className="perm-notice">
@@ -901,9 +893,20 @@ function DashboardTab({ assets, counts, onCommand, commandStatus, lockState, per
     );
   }
 
+  const formatDateTime = (timestamp) => {
+    if (!timestamp) return '—';
+    const date = new Date(timestamp);
+    return date.toLocaleString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      hour: '2-digit', 
+      minute: '2-digit'
+    });
+  };
+
   return (
     <>
-      {/* Status Filter Chips with Server Counts */}
+      {/* Status Filter Chips with Counts */}
       {counts && (
         <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
           <button 
@@ -911,7 +914,7 @@ function DashboardTab({ assets, counts, onCommand, commandStatus, lockState, per
             onClick={() => setStatusFilter('all')}
             style={{ padding: '8px 16px', borderRadius: 20, border: '1px solid var(--border2)', background: statusFilter === 'all' ? 'var(--accent)' : 'var(--bg3)', color: statusFilter === 'all' ? '#fff' : 'var(--text)', cursor: 'pointer', fontSize: 13, fontWeight: 500 }}
           >
-            All ({counts.total})
+            All ({counts.moving + counts.idle + counts.stopped + counts.offline})
           </button>
           <button 
             className={`status-chip ${statusFilter === 'moving' ? 'status-chip-active' : ''}`}
@@ -941,113 +944,284 @@ function DashboardTab({ assets, counts, onCommand, commandStatus, lockState, per
           >
             📡 Offline ({counts.offline})
           </button>
-          {counts.untracked > 0 && (
-            <button 
-              className={`status-chip ${statusFilter === 'untracked' ? 'status-chip-active' : ''}`}
-              onClick={() => setStatusFilter('untracked')}
-              style={{ padding: '8px 16px', borderRadius: 20, border: '1px solid var(--border2)', background: statusFilter === 'untracked' ? '#6B7280' : 'var(--bg3)', color: statusFilter === 'untracked' ? '#fff' : 'var(--text)', cursor: 'pointer', fontSize: 13, fontWeight: 500 }}
-            >
-              🔍 No Device ({counts.untracked})
-            </button>
-          )}
         </div>
       )}
 
-      <div className="cards">
-        <div className="card"><span className="card-label">Showing</span><span className="card-value">{filtered.length}</span></div>
-        <div className="card card-online-tone"><span className="card-label">Online</span><span className="card-value">{counts?.moving + counts?.idle || 0}</span></div>
-        <div className="card card-offline-tone"><span className="card-label">Offline</span><span className="card-value">{counts?.offline || 0}</span></div>
-        <div className="card"><span className="card-label">GPS Fixes</span><span className="card-value">{positions.length}</span></div>
+      {/* Search Bar */}
+      <div style={{ marginBottom: 16 }}>
+        <input 
+          className="search-input" 
+          type="text"
+          placeholder="🔍 Search by vehicle name, plate, IMEI, operator..."
+          value={query} 
+          onChange={(e) => setQuery(e.target.value)}
+          style={{ width: '100%', maxWidth: 500, padding: '10px 16px', fontSize: 14 }}
+        />
       </div>
 
-      <div className="map-box">
-        <MapContainer center={positions[0] ? [positions[0].location.latitude, positions[0].location.longitude] : DEFAULT_CENTER} zoom={12} style={{ height: 320, width: "100%" }}>
-          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-          {positions.map((a) => (
-            <Marker key={a.id} position={[a.location.latitude, a.location.longitude]} icon={getIcon(a)}>
-              <Popup>
-                <div className="map-popup">
-                  <strong>{a.license_plate || a.name}</strong>
-                  {a.operator_name && <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>👤 {a.operator_name}</div>}
-                  {a.model && <div style={{ fontSize: 12, color: 'var(--text3)' }}>🚗 {a.model}</div>}
-                  <span className={`popup-status ${a.status === "moving" ? "popup-online" : "popup-offline"}`}>{a.status}</span>
-                  <div className="popup-row"><span>📍</span><span>{a.location.latitude.toFixed(5)}, {a.location.longitude.toFixed(5)}</span></div>
-                  {a.location.speed > 0 && <div className="popup-row"><span>🏎️</span><span>{a.location.speed.toFixed(1)} km/h</span></div>}
-                  {a.state?.ignition && a.state.ignition.value !== null && <div className="popup-row"><span>🔥</span><span>Ignition: {a.state.ignition.value ? 'ON' : 'OFF'}</span></div>}
-                  {a.state?.soc && a.state.soc.value !== null && <div className="popup-row"><span>🔋</span><span>Battery: {a.state.soc.value}%</span></div>}
-                </div>
-              </Popup>
-            </Marker>
-          ))}
-        </MapContainer>
-        {positions.length === 0 && filtered.length > 0 && (
-          <div className="map-empty-note">No GPS coordinates reported for filtered vehicles.</div>
-        )}
-      </div>
+      {/* Data Table */}
+      <div style={{ overflowX: 'auto', background: 'var(--bg2)', borderRadius: 8, border: '1px solid var(--border2)' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <thead>
+            <tr style={{ background: 'var(--bg3)', borderBottom: '2px solid var(--border2)' }}>
+              <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text2)' }}>Device</th>
+              <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text2)' }}>Latitude</th>
+              <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text2)' }}>Longitude</th>
+              <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text2)' }}>Address</th>
+              <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text2)' }}>Fix Time</th>
+              <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text2)' }}>Server Time</th>
+              <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text2)' }}>Speed</th>
+              <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text2)' }}>Ignition</th>
+              <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text2)' }}>Blocked</th>
+              <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text2)' }}>Platform</th>
+              <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 600, color: 'var(--text2)' }}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 ? (
+              <tr>
+                <td colSpan={11} style={{ padding: 32, textAlign: 'center', color: 'var(--text3)' }}>
+                  No vehicles match your search
+                </td>
+              </tr>
+            ) : (
+              filtered.map((asset) => {
+                const device = asset.iot_devices?.[0];
+                const deviceId = device?.device_id || asset.id;
+                const lat = asset.location?.latitude;
+                const lng = asset.location?.longitude;
+                const address = asset.location?.address || '—';
+                const fixTime = asset.location?.timestamp ? formatDateTime(new Date(asset.location.timestamp * 1000)) : '—';
+                const serverTime = device?.last_communication ? formatDateTime(device.last_communication) : '—';
+                const speed = asset.location?.speed !== undefined ? `${asset.location.speed.toFixed(1)} km/h` : '0.00 km/h';
+                const ignition = asset.state?.ignition?.value;
+                const isBlocked = asset.state?.immobilized?.value;
+                const platform = asset.source === 'setrack' ? 'SeTrack' : 'VoltCred';
+                
+                // Get vehicle display name
+                const displayName = (() => {
+                  if (asset.license_plate && asset.license_plate !== 'false' && asset.license_plate !== asset.id && !/^\d{15}$/.test(asset.license_plate)) {
+                    return asset.license_plate;
+                  }
+                  if (asset.name && asset.name !== 'false' && !/^\d{15}$/.test(asset.name)) {
+                    return asset.name;
+                  }
+                  return `Device ${deviceId}`;
+                })();
 
-      <div className="panel" style={{ marginTop: 22 }}>
-        <div className="panel-head">
-          <h2>Vehicle list ({filtered.length})</h2>
-          <div style={{ display: 'flex', gap: 12 }}>
-            <input 
-              className="search-input" 
-              type="text"
-              placeholder="Search by name, plate, operator..."
-              value={query} 
-              onChange={(e) => setQuery(e.target.value)}
-              style={{ width: 300 }}
-            />
-          </div>
-        </div>
-        {filtered.length === 0 ? <p className="muted" style={{ marginTop: 14 }}>No vehicles match.</p> : (
-          <div className="vehicle-table">
-            <div className="vt-row vt-head">
-              <span>Vehicle</span><span>Operator</span><span>Status</span><span>State</span><span>Location</span>
-            </div>
-            {filtered.map((a) => {
-              const isOnline = a.status === "moving" || a.status === "idle";
-              const ignition = a.state?.ignition;
-              const immobiliser = a.state?.immobilized; // Use 'immobilized' field for actual hardware state
-              const soc = a.state?.soc || a.state?.remaining_capacity;
-              const speed = a.location?.speed;
-              const staleLocation = a.location && a.location.timestamp && ((Date.now() / 1000) - a.location.timestamp > 3600);
-              
-              // Fix vehicle name display - don't show "false" or IMEI as license plate
-              const displayName = (() => {
-                if (a.license_plate && a.license_plate !== 'false' && a.license_plate !== a.id && !/^\d{15}$/.test(a.license_plate)) {
-                  return a.license_plate;
-                }
-                if (a.name && a.name !== 'false' && !/^\d{15}$/.test(a.name)) {
-                  return a.name;
-                }
-                // Fallback to asset ID if both are IMEI or false
-                return `Asset #${a.id}`;
-              })();
-              
-              return (
-                <div className="vt-row" key={a.id}>
-                  <span className="vt-name">
-                    <div style={{ fontWeight: 600 }}>{displayName}</div>
-                    {a.model && <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>{a.model}</div>}
-                  </span>
-                  <span style={{ fontSize: 13 }}>{a.operator_name || '—'}</span>
-                  <span className={`status-pill ${isOnline ? "pill-online" : "pill-offline"}`}>{a.status || "unknown"}</span>
-                  <span style={{ fontSize: 12, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    {/* Only show state if value is not null and observed */}
-                    {ignition && ignition.value !== null && ignition.observed && (
-                      <span title={`Ignition ${ignition.value ? 'ON' : 'OFF'}`}>
-                        {ignition.value ? '🔥' : '❄️'}
+                return (
+                  <tr key={asset.id} style={{ borderBottom: '1px solid var(--border2)', transition: 'background 0.2s' }} 
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg3)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                    <td style={{ padding: '12px 16px' }}>
+                      <div style={{ fontWeight: 500 }}>{displayName}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>{deviceId}</div>
+                    </td>
+                    <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: 12 }}>{lat ? lat.toFixed(5) : '—'}</td>
+                    <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: 12 }}>{lng ? lng.toFixed(5) : '—'}</td>
+                    <td style={{ padding: '12px 16px', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={address}>{address}</td>
+                    <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text2)' }}>{fixTime}</td>
+                    <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text2)' }}>{serverTime}</td>
+                    <td style={{ padding: '12px 16px' }}>{speed}</td>
+                    <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                      {ignition === true ? '✓' : ignition === false ? '✗' : '—'}
+                    </td>
+                    <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                      {isBlocked === true ? '✓' : isBlocked === false ? '✗' : '—'}
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <span style={{ 
+                        padding: '4px 8px', 
+                        borderRadius: 4, 
+                        fontSize: 11, 
+                        fontWeight: 500,
+                        background: platform === 'SeTrack' ? '#3b82f620' : '#10b98120',
+                        color: platform === 'SeTrack' ? '#3b82f6' : '#10b981'
+                      }}>
+                        {platform}
                       </span>
-                    )}
-                    {immobiliser && immobiliser.value !== null && (
-                      <span title={`${immobiliser.value ? 'Locked' : 'Unlocked'}${immobiliser.observed ? '' : ' (unconfirmed)'}`}>
-                        {immobiliser.value ? '🔒' : '🔓'}
-                        {!immobiliser.observed && <span style={{ color: '#F59E0B' }}>⏳</span>}
-                      </span>
-                    )}
-                    {soc && soc.value !== null && soc.observed && (
-                      <span title={`Battery: ${soc.value}${soc.unit || '%'}`}>
-                        🔋{soc.value}{soc.unit || '%'}
+                    </td>
+                    <td style={{ padding: '12px 16px', textAlign: 'center', position: 'relative' }}>
+                      <button 
+                        onClick={() => setActionMenuOpen(actionMenuOpen === asset.id ? null : asset.id)}
+                        style={{ 
+                          padding: '6px 12px', 
+                          background: 'var(--accent)', 
+                          color: 'white', 
+                          border: 'none', 
+                          borderRadius: 6, 
+                          cursor: 'pointer',
+                          fontSize: 12,
+                          fontWeight: 500
+                        }}
+                      >
+                        Actions ▾
+                      </button>
+                      
+                      {/* Action Dropdown Menu */}
+                      {actionMenuOpen === asset.id && (
+                        <div style={{
+                          position: 'absolute',
+                          right: 16,
+                          top: '100%',
+                          marginTop: 4,
+                          background: 'var(--bg2)',
+                          border: '1px solid var(--border2)',
+                          borderRadius: 8,
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                          zIndex: 1000,
+                          minWidth: 180,
+                          overflow: 'hidden'
+                        }}>
+                          {asset.source !== 'setrack' && (
+                            <>
+                              <button
+                                onClick={() => {
+                                  setActionMenuOpen(null);
+                                  onCommand(device.id, asset.id, isBlocked ? 'engine_restore' : 'engine_cutoff', deviceId);
+                                }}
+                                style={{
+                                  width: '100%',
+                                  padding: '10px 16px',
+                                  border: 'none',
+                                  background: 'transparent',
+                                  textAlign: 'left',
+                                  cursor: 'pointer',
+                                  fontSize: 13,
+                                  color: 'var(--text)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 8
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg3)'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                              >
+                                {isBlocked ? '🔓 Unlock' : '🔒 Lock'}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setActionMenuOpen(null);
+                                  onCommand(device.id, asset.id, 'location_request', deviceId);
+                                }}
+                                style={{
+                                  width: '100%',
+                                  padding: '10px 16px',
+                                  border: 'none',
+                                  background: 'transparent',
+                                  textAlign: 'left',
+                                  cursor: 'pointer',
+                                  fontSize: 13,
+                                  color: 'var(--text)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 8
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg3)'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                              >
+                                📍 Request Location
+                              </button>
+                            </>
+                          )}
+                          {lat && lng && (
+                            <>
+                              <button
+                                onClick={() => {
+                                  setActionMenuOpen(null);
+                                  window.open(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`, '_blank');
+                                }}
+                                style={{
+                                  width: '100%',
+                                  padding: '10px 16px',
+                                  border: 'none',
+                                  background: 'transparent',
+                                  textAlign: 'left',
+                                  cursor: 'pointer',
+                                  fontSize: 13,
+                                  color: 'var(--text)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 8
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg3)'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                              >
+                                🗺️ View on Map
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setActionMenuOpen(null);
+                                  const mapLink = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+                                  const message = `Vehicle: ${displayName}\n📍 Location: ${mapLink}`;
+                                  window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+                                }}
+                                style={{
+                                  width: '100%',
+                                  padding: '10px 16px',
+                                  border: 'none',
+                                  background: 'transparent',
+                                  textAlign: 'left',
+                                  cursor: 'pointer',
+                                  fontSize: 13,
+                                  color: 'var(--text)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 8
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg3)'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                              >
+                                💬 Share via WhatsApp
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setActionMenuOpen(null);
+                                  const mapLink = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+                                  navigator.clipboard.writeText(mapLink);
+                                  alert('📋 Location link copied!');
+                                }}
+                                style={{
+                                  width: '100%',
+                                  padding: '10px 16px',
+                                  border: 'none',
+                                  background: 'transparent',
+                                  textAlign: 'left',
+                                  cursor: 'pointer',
+                                  fontSize: 13,
+                                  color: 'var(--text)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 8
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg3)'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                              >
+                                📋 Copy Location
+                              </button>
+                            </>
+                          )}
+                          {asset.source === 'setrack' && (
+                            <div style={{ padding: '10px 16px', fontSize: 11, color: 'var(--text3)', fontStyle: 'italic' }}>
+                              Tracking only - no commands
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+      
+      <div style={{ marginTop: 16, fontSize: 13, color: 'var(--text3)', textAlign: 'right' }}>
+        Showing {filtered.length} of {assets.length} vehicles
+      </div>
+    </>
+  );
+}
                       </span>
                     )}
                     {speed > 0 && (
