@@ -2795,8 +2795,8 @@ export default function App() {
       
       <aside className={`sidebar ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
         <div className="brand">
-          <span className="brand-mark">OG</span>
-          <span className="brand-name">OPTI GraphQL</span>
+          <span className="brand-mark">OT</span>
+          <span className="brand-name">OPTI Tracker</span>
         </div>
         
         <div className="sidebar-user-info">
