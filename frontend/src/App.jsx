@@ -12,12 +12,12 @@ const API_BASE = import.meta.env.DEV ? "http://localhost:5001" : "";
 const DEFAULT_CENTER = [17.522624444444443, 78.41514388888889];
 
 const NAV_ITEMS = [
-  { key: "dashboard", label: "🗺️ Dashboard" },
-  { key: "tracker",   label: "📡 Tracker"   },
-  { key: "vehicles",  label: "🚗 VoltCred"  },
-  { key: "setrack",   label: "🚙 SeTrack"   },
-  { key: "activity",  label: "📋 Activity"  },
-  { key: "settings",  label: "⚙️ Settings"  },
+  { key: "dashboard", icon: "🗺️", label: "Dashboard" },
+  { key: "tracker",   icon: "📡", label: "Tracker" },
+  { key: "vehicles",  icon: "🚗", label: "VoltCred" },
+  { key: "setrack",   icon: "🚙", label: "SeTrack" },
+  { key: "activity",  icon: "📋", label: "Activity" },
+  { key: "settings",  icon: "⚙️", label: "Settings" },
 ];
 
 const COMMAND_LABELS = {
@@ -3169,12 +3169,21 @@ export default function App() {
 
   return (
     <div className="app">
-      <button className="sidebar-toggle" onClick={() => setSidebarCollapsed(!sidebarCollapsed)}>☰</button>
-      
       <aside className={`sidebar ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
-        <div className="brand">
-          <span className="brand-mark">OT</span>
-          <span className="brand-name">OPTI Tracker</span>
+        <div className="sidebar-header">
+          <div className="brand">
+            <span className="brand-mark">OT</span>
+            <span className="brand-name">OPTI Tracker</span>
+          </div>
+          <button
+            className="sidebar-toggle"
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-expanded={!sidebarCollapsed}
+            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            ☰
+          </button>
         </div>
         
         <div className="sidebar-user-info">
@@ -3189,19 +3198,28 @@ export default function App() {
           <ul>
             {NAV_ITEMS.map((item) => (
               <li key={item.key}>
-                <button className={`nav-item ${activeTab === item.key ? "nav-active" : ""}`} onClick={() => setActiveTab(item.key)}>
-                  {item.label}
+                <button
+                  className={`nav-item ${activeTab === item.key ? "nav-active" : ""}`}
+                  onClick={() => setActiveTab(item.key)}
+                  title={sidebarCollapsed ? item.label : undefined}
+                  aria-label={item.label}
+                >
+                  <span className="nav-icon" aria-hidden="true">{item.icon}</span>
+                  <span className="nav-label">{item.label}</span>
                 </button>
               </li>
             ))}
           </ul>
         </nav>
         
-        <button className="sidebar-logout" onClick={logout}>🚪 Logout</button>
+        <button className="sidebar-logout" onClick={logout} title="Logout" aria-label="Logout">
+          <span aria-hidden="true">🚪</span>
+          <span className="sidebar-logout-label">Logout</span>
+        </button>
         
         <div className="sidebar-footer">
           <span className={`pulse-dot ${online > 0 ? "pulse-live" : "pulse-idle"}`} />
-          <span>{permBlocked ? "Awaiting permission" : assets.length > 0 ? `${assets.length} assets • ${online} online` : "No data"}</span>
+          <span className="sidebar-footer-label">{permBlocked ? "Awaiting permission" : assets.length > 0 ? `${assets.length} assets • ${online} online` : "No data"}</span>
         </div>
       </aside>
 
