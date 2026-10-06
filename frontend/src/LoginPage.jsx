@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { useAuth } from './AuthContext';
 import './LoginPage.css';
 
@@ -9,18 +9,6 @@ export function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
-
-  const handleUsernameChange = useCallback((e) => {
-    setUsername(e.target.value);
-  }, []);
-
-  const handlePasswordChange = useCallback((e) => {
-    setPassword(e.target.value);
-  }, []);
-
-  const togglePasswordVisibility = useCallback(() => {
-    setShowPassword(prev => !prev);
-  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -52,7 +40,10 @@ export function LoginPage() {
               name="username"
               type="text"
               value={username}
-              onChange={handleUsernameChange}
+              onChange={(e) => {
+                console.log('Username changed:', e.target.value);
+                setUsername(e.target.value);
+              }}
               placeholder="Enter your username"
               autoComplete="username"
               disabled={loading}
@@ -67,7 +58,10 @@ export function LoginPage() {
                 name="password"
                 type={showPassword ? "text" : "password"}
                 value={password}
-                onChange={handlePasswordChange}
+                onChange={(e) => {
+                  console.log('Password changed');
+                  setPassword(e.target.value);
+                }}
                 placeholder="Enter your password"
                 autoComplete="current-password"
                 disabled={loading}
@@ -75,7 +69,11 @@ export function LoginPage() {
               <button
                 type="button"
                 className="password-toggle"
-                onClick={togglePasswordVisibility}
+                onClick={(e) => {
+                  e.preventDefault();
+                  console.log('Toggle clicked');
+                  setShowPassword(!showPassword);
+                }}
                 tabIndex="-1"
                 aria-label={showPassword ? "Hide password" : "Show password"}
               >
