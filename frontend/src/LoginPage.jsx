@@ -37,15 +37,12 @@ export function LoginPage() {
             <label htmlFor="username">Username</label>
             <input
               id="username"
-              name="username"
               type="text"
               value={username}
-              onChange={(e) => {
-                console.log('Username changed:', e.target.value);
-                setUsername(e.target.value);
-              }}
+              onChange={(e) => setUsername(e.target.value)}
               placeholder="Enter your username"
-              autoComplete="username"
+              required
+              autoFocus
               disabled={loading}
             />
           </div>
@@ -55,27 +52,18 @@ export function LoginPage() {
             <div className="password-input-wrapper">
               <input
                 id="password"
-                name="password"
                 type={showPassword ? "text" : "password"}
                 value={password}
-                onChange={(e) => {
-                  console.log('Password changed');
-                  setPassword(e.target.value);
-                }}
+                onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
-                autoComplete="current-password"
+                required
                 disabled={loading}
               />
               <button
                 type="button"
                 className="password-toggle"
-                onClick={(e) => {
-                  e.preventDefault();
-                  console.log('Toggle clicked');
-                  setShowPassword(!showPassword);
-                }}
+                onClick={() => setShowPassword(!showPassword)}
                 tabIndex="-1"
-                aria-label={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? "👁️" : "👁️‍🗨️"}
               </button>
