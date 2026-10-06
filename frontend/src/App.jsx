@@ -3081,8 +3081,16 @@ export default function App() {
   const [activeTab, setActiveTab]         = useState("dashboard");
   const [commandStatus, setCommandStatus] = useState({});
   const [pendingConfirm, setPendingConfirm] = useState(null);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => window.matchMedia("(max-width: 768px)").matches);
   const [dark, setDark] = useDarkMode();
+
+  useEffect(() => {
+    const mobileQuery = window.matchMedia("(max-width: 768px)");
+    const syncSidebar = (event) => setSidebarCollapsed(event.matches);
+
+    mobileQuery.addEventListener("change", syncSidebar);
+    return () => mobileQuery.removeEventListener("change", syncSidebar);
+  }, []);
 
   const { assets, counts, total, loading, error, permBlocked, lastFetched, reload } = useAssets(authenticatedFetch, isAuthenticated);
   
@@ -3169,6 +3177,13 @@ export default function App() {
 
   return (
     <div className="app">
+      {!sidebarCollapsed && (
+        <button
+          className="mobile-sidebar-backdrop"
+          onClick={() => setSidebarCollapsed(true)}
+          aria-label="Close navigation menu"
+        />
+      )}
       <aside className={`sidebar ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
         <div className="sidebar-header">
           <div className="brand">
@@ -3200,7 +3215,10 @@ export default function App() {
               <li key={item.key}>
                 <button
                   className={`nav-item ${activeTab === item.key ? "nav-active" : ""}`}
-                  onClick={() => setActiveTab(item.key)}
+                  onClick={() => {
+                    setActiveTab(item.key);
+                    if (window.matchMedia("(max-width: 768px)").matches) setSidebarCollapsed(true);
+                  }}
                   title={sidebarCollapsed ? item.label : undefined}
                   aria-label={item.label}
                 >
@@ -3229,9 +3247,12 @@ export default function App() {
           <div className="topbar-right">
             {relativeTime && <span className="last-updated" title={lastFetched?.toLocaleTimeString()}>Updated {relativeTime}</span>}
             <button className={`theme-toggle-prominent ${dark ? "theme-dark" : "theme-light"}`} onClick={() => setDark(!dark)} title="Toggle theme">
-              {dark ? "☀️ Light Mode" : "🌙 Dark Mode"}
+              <span aria-hidden="true">{dark ? "☀️" : "🌙"}</span>
+              <span>{dark ? "Light Mode" : "Dark Mode"}</span>
             </button>
-            <button className="refresh-btn" onClick={reload} disabled={loading}>{loading ? "Loading…" : "↻ Refresh"}</button>
+            <button className="refresh-btn" onClick={reload} disabled={loading}>
+              {loading ? "Loading…" : <><span aria-hidden="true">↻</span> Refresh</>}
+            </button>
           </div>
         </div>
 
