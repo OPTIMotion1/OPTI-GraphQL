@@ -1,0 +1,37 @@
+================================================
+WORKING CURL COMMAND FOR WINDOWS CMD
+================================================
+
+Replace YOUR_TOKEN with your actual token from login
+
+DEVICE 453 (Lock Command):
+--------------------------
+
+curl -X POST "https://api.voltcred.com/v2/graphql" -H "Content-Type: application/json" -H "Cookie: authorization=YOUR_TOKEN; device=web" -d "{\"query\":\"mutation{executeDeviceCommand(device_id:453,command_type:engine_cutoff){id command_code status execution_time}}\"}"
+
+
+DEVICE 477 (F00097 - Lock Command):
+------------------------------------
+
+curl -X POST "https://api.voltcred.com/v2/graphql" -H "Content-Type: application/json" -H "Cookie: authorization=YOUR_TOKEN; device=web" -d "{\"query\":\"mutation{executeDeviceCommand(device_id:477,command_type:engine_cutoff){id command_code status execution_time}}\"}"
+
+
+GET LOGIN TOKEN (run this first):
+----------------------------------
+
+curl -X POST "https://api.voltcred.com/v2/graphql" -H "Content-Type: application/json" -H "Cookie: device=web" -d "{\"query\":\"mutation{sessionCreateV2(data:{email:\\\"hello@optimotion.in\\\",password:\\\"Hello@1234\\\"}){token success}}\"}"
+
+
+SIMPLIFIED VERSION (EASIER TO COPY):
+=====================================
+
+1. Get token:
+curl -X POST https://api.voltcred.com/v2/graphql -H "Content-Type: application/json" -H "Cookie: device=web" -d "{\"query\":\"mutation{sessionCreateV2(data:{email:\\\"hello@optimotion.in\\\",password:\\\"Hello@1234\\\"}){token}}\"}"
+
+2. Copy the token from response
+
+3. Send lock to device 453:
+curl -X POST https://api.voltcred.com/v2/graphql -H "Content-Type: application/json" -H "Cookie: authorization=PASTE_TOKEN_HERE; device=web" -d "{\"query\":\"mutation{executeDeviceCommand(device_id:453,command_type:engine_cutoff){id status}}\"}"
+
+4. Send lock to device 477 (F00097):
+curl -X POST https://api.voltcred.com/v2/graphql -H "Content-Type: application/json" -H "Cookie: authorization=PASTE_TOKEN_HERE; device=web" -d "{\"query\":\"mutation{executeDeviceCommand(device_id:477,command_type:engine_cutoff){id status}}\"}"

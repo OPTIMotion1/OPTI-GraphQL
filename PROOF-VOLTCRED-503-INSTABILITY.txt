@@ -1,0 +1,52 @@
+=== PROOF: VoltCred API HTTP 503 Instability ===
+
+Run this command MULTIPLE TIMES (5-10 times) to see the instability:
+
+
+STEP 1: Get fresh token
+------------------------
+curl -X POST "https://api.voltcred.com/v2/graphql" -H "Content-Type: application/json" -H "Cookie: device=web" --data-raw "{\"query\":\"mutation Login($email: String!, $password: String!) { sessionCreateV2(data: { email: $email, password: $password }) { token success messageKey } }\",\"variables\":{\"email\":\"hello@optimotion.in\",\"password\":\"Hello@1234\"}}"
+
+Copy the token from the response.
+
+
+STEP 2: Run this command 10 TIMES (copy-paste multiple times)
+--------------------------------------------------------------
+Replace YOUR_TOKEN_HERE with the token from Step 1:
+
+curl -i -X POST "https://api.voltcred.com/v2/graphql" -H "Content-Type: application/json" -H "Cookie: authorization=YOUR_TOKEN_HERE; device=web" --data-raw "{\"query\":\"query ListAssetsPage($limit: Int, $offset: Int) { assetsWithPagination(limit: $limit, offset: $offset) { total counts { moving idle stopped offline untracked total } rows { id name status } } }\",\"variables\":{\"limit\":200,\"offset\":0}}"
+
+
+WHAT YOU'LL SEE:
+----------------
+
+Sometimes it works (HTTP 200):
+HTTP/1.1 200 OK
+{"data":{"assetsWithPagination":{"total":61,"counts":{...},"rows":[...]}}}
+
+Sometimes it fails (HTTP 503):
+HTTP/1.1 503 Service Unavailable
+{"errors":[{"message":"Failed to fetch assets: HTTP 503","extensions":{"code":"INTERNAL_SERVER_ERROR"}}]}
+
+
+THIS PROVES:
+------------
+1. Same credentials
+2. Same query
+3. Same everything
+4. Different results = VoltCred's server is unstable
+
+Send these curl results to VoltCred support as proof!
+
+
+ALTERNATIVE: Quick automated test
+----------------------------------
+Run this PowerShell command to test 10 times automatically:
+
+for ($i=1; $i -le 10; $i++) { 
+  Write-Host "`nAttempt $i of 10..." -ForegroundColor Yellow
+  curl -i -X POST "https://api.voltcred.com/v2/graphql" -H "Content-Type: application/json" -H "Cookie: authorization=YOUR_TOKEN_HERE; device=web" --data-raw "{\"query\":\"query { assetsWithPagination(limit: 10, offset: 0) { total } }\"}" 2>&1 | Select-String "HTTP/1.1|total"
+  Start-Sleep -Seconds 2
+}
+
+You'll see some requests succeed (200 OK) and some fail (503 Service Unavailable).

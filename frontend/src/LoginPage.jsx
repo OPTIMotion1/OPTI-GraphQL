@@ -24,7 +24,7 @@ export function LoginPage() {
   };
 
   return (
-    <div className="login-container">
+    <div className="login-container" data-version="fixed-v1">
       <div className="login-box">
         <div className="login-header">
           <div className="login-logo">🚗</div>

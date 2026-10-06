@@ -1,0 +1,51 @@
+================================================
+LOCATION REQUEST CURL COMMANDS FOR WINDOWS CMD
+================================================
+
+Replace YOUR_TOKEN with your actual token from login
+
+DEVICE 453 (Location Request):
+-------------------------------
+
+curl -X POST https://api.voltcred.com/v2/graphql -H "Content-Type: application/json" -H "Cookie: authorization=YOUR_TOKEN; device=web" -d "{\"query\":\"mutation{executeDeviceCommand(device_id:453,command_type:location_request){id command_code status execution_time}}\"}"
+
+
+DEVICE 477 - F00097 (Location Request):
+----------------------------------------
+
+curl -X POST https://api.voltcred.com/v2/graphql -H "Content-Type: application/json" -H "Cookie: authorization=YOUR_TOKEN; device=web" -d "{\"query\":\"mutation{executeDeviceCommand(device_id:477,command_type:location_request){id command_code status execution_time}}\"}"
+
+
+GET LOGIN TOKEN (run this first):
+----------------------------------
+
+curl -X POST https://api.voltcred.com/v2/graphql -H "Content-Type: application/json" -H "Cookie: device=web" -d "{\"query\":\"mutation{sessionCreateV2(data:{email:\\\"hello@optimotion.in\\\",password:\\\"Hello@1234\\\"}){token}}\"}"
+
+
+ALL COMMANDS IN ONE PLACE:
+===========================
+
+1. GET TOKEN:
+curl -X POST https://api.voltcred.com/v2/graphql -H "Content-Type: application/json" -H "Cookie: device=web" -d "{\"query\":\"mutation{sessionCreateV2(data:{email:\\\"hello@optimotion.in\\\",password:\\\"Hello@1234\\\"}){token}}\"}"
+
+
+2. LOCATION REQUEST (Device 453):
+curl -X POST https://api.voltcred.com/v2/graphql -H "Content-Type: application/json" -H "Cookie: authorization=PASTE_TOKEN_HERE; device=web" -d "{\"query\":\"mutation{executeDeviceCommand(device_id:453,command_type:location_request){id status}}\"}"
+
+
+3. LOCATION REQUEST (Device 477 - F00097):
+curl -X POST https://api.voltcred.com/v2/graphql -H "Content-Type: application/json" -H "Cookie: authorization=PASTE_TOKEN_HERE; device=web" -d "{\"query\":\"mutation{executeDeviceCommand(device_id:477,command_type:location_request){id status}}\"}"
+
+
+4. LOCK (Device 453):
+curl -X POST https://api.voltcred.com/v2/graphql -H "Content-Type: application/json" -H "Cookie: authorization=PASTE_TOKEN_HERE; device=web" -d "{\"query\":\"mutation{executeDeviceCommand(device_id:453,command_type:engine_cutoff){id status}}\"}"
+
+
+5. UNLOCK (Device 453):
+curl -X POST https://api.voltcred.com/v2/graphql -H "Content-Type: application/json" -H "Cookie: authorization=PASTE_TOKEN_HERE; device=web" -d "{\"query\":\"mutation{executeDeviceCommand(device_id:453,command_type:engine_restore){id status}}\"}"
+
+
+NOTE:
+-----
+All commands will fail with "requires Asset Manager permission" error 
+until VoltCred grants your account the necessary permissions.

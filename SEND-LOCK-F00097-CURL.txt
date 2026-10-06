@@ -1,0 +1,77 @@
+================================================
+CURL COMMANDS TO TEST F00097 LOCK COMMAND
+Device ID: 477
+IMEI: 864540081617540
+================================================
+
+STEP 1: Login and get token
+----------------------------
+
+curl -X POST "https://api-stage.voltcred.com/v2/graphql" ^
+-H "Content-Type: application/json" ^
+-H "Cookie: device=web" ^
+--data-raw "{\"query\":\"mutation Login($email: String!, $password: String!) { sessionCreateV2(data: { email: $email, password: $password }) { token success messageKey } }\",\"variables\":{\"email\":\"hello@optimotion.in\",\"password\":\"Onkar@123\"}}"
+
+Copy the "token" from the response and use it in STEP 2 below.
+Replace YOUR_TOKEN_HERE with the actual token.
+
+
+STEP 2: Send Lock Command to Device 477
+----------------------------------------
+
+curl -X POST "https://api-stage.voltcred.com/v2/graphql" ^
+-H "Content-Type: application/json" ^
+-H "Cookie: authorization=YOUR_TOKEN_HERE; device=web" ^
+--data-raw "{\"query\":\"mutation SendCommand($deviceId: Int!, $command: CommandType!) { executeDeviceCommand(device_id: $deviceId, command_type: $command) { id command_code status execution_time } }\",\"variables\":{\"deviceId\":477,\"command\":\"engine_cutoff\"}}"
+
+
+EXPECTED RESPONSES:
+-------------------
+
+SUCCESS:
+{
+  "data": {
+    "executeDeviceCommand": {
+      "id": "XXX",
+      "command_code": "engine_cutoff",
+      "status": "pending",
+      "execution_time": "2026-09-28T..."
+    }
+  }
+}
+
+PERMISSION DENIED (Current Issue):
+{
+  "errors": [{
+    "message": "Failed to execute device command: Uh-oh! Looks like you have stumbled upon some top-secret records. Sorry, Optimotion Plancab Travels (id=95) doesn't have 'read' access to: Asset IoT Device Registry (asset.iot.device)"
+  }]
+}
+
+
+STEP 3: Verify Command in History
+----------------------------------
+
+curl -X POST "https://api-stage.voltcred.com/v2/graphql" ^
+-H "Content-Type: application/json" ^
+-H "Cookie: authorization=YOUR_TOKEN_HERE; device=web" ^
+--data-raw "{\"query\":\"query { deviceCommands(device_id: 477) { id command_code status execution_time response } }\"}"
+
+
+================================================
+ISSUE SUMMARY FOR VOLTCRED SUPPORT
+================================================
+
+Account: hello@optimotion.in
+Company: Optimotion Plancab Travels (ID: 95)
+Device: F00097 (ID: 477, IMEI: 864540081617540)
+
+Problem:
+- Can view device in asset list ✅
+- Can view command history ✅
+- CANNOT send commands ❌
+
+Error: "doesn't have 'read' access to: Asset IoT Device Registry (asset.iot.device)"
+
+Request:
+Please grant "Asset IoT Device Registry" WRITE permissions to our account
+so we can send engine_cutoff/engine_restore commands to all our devices.
