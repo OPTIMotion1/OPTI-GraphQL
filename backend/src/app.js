@@ -54,6 +54,33 @@ app.get("/api/health", async (req, res) => {
   }
 });
 
+// SeTrack health check - test if SeTrack API is working
+app.get("/api/setrack-test", async (req, res) => {
+  try {
+    const { getSeTrackDevices } = require("./services/setrack.service");
+    const result = await getSeTrackDevices();
+    res.json({ 
+      success: true, 
+      deviceCount: result.devices.length,
+      devices: result.devices,
+      env: {
+        url: process.env.SETRACK_API_URL ? 'SET' : 'NOT SET',
+        token: process.env.SETRACK_ACCESS_TOKEN ? `${process.env.SETRACK_ACCESS_TOKEN.substring(0, 20)}...` : 'NOT SET'
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, 
+      error: error.message,
+      stack: error.stack,
+      env: {
+        url: process.env.SETRACK_API_URL ? 'SET' : 'NOT SET',
+        token: process.env.SETRACK_ACCESS_TOKEN ? `${process.env.SETRACK_ACCESS_TOKEN.substring(0, 20)}...` : 'NOT SET'
+      }
+    });
+  }
+});
+
 // Serve built frontend in production
 const frontendDist = path.join(__dirname, "..", "..", "frontend", "dist");
 if (require("fs").existsSync(frontendDist)) {
