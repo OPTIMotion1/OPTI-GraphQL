@@ -15,10 +15,14 @@ export function LoginPage() {
     setError('');
     setLoading(true);
 
-    const result = await login(username, password);
-
-    if (!result.success) {
-      setError(result.error);
+    try {
+      const result = await login(username, password);
+      if (!result.success) {
+        setError(result.error);
+      }
+    } catch (error) {
+      setError(error.message || 'Login failed. Please try again.');
+    } finally {
       setLoading(false);
     }
   };

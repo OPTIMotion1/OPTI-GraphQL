@@ -3,6 +3,25 @@ import { createContext, useContext, useState, useEffect } from 'react';
 const AuthContext = createContext(null);
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:5001' : '';
+const REQUEST_TIMEOUT_MS = 15000;
+
+async function fetchJson(url, options) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    const data = await response.json();
+    return { response, data };
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new Error('Request timed out. Please check your connection and try again.');
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -20,12 +39,11 @@ export function AuthProvider({ children }) {
 
   const verifyToken = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/auth/me`, {
+      const { response: res, data } = await fetchJson(`${API_BASE}/api/auth/me`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
       if (res.ok) {
-        const data = await res.json();
         setUser(data.user);
       } else {
         // Token invalid or expired
@@ -41,13 +59,11 @@ export function AuthProvider({ children }) {
 
   const login = async (username, password) => {
     try {
-      const res = await fetch(`${API_BASE}/api/auth/login`, {
+      const { response: res, data } = await fetchJson(`${API_BASE}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
       });
-
-      const data = await res.json();
 
       if (!res.ok) {
         throw new Error(data.message || 'Login failed');
