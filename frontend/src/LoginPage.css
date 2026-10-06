@@ -1,10 +1,13 @@
 .login-container {
   min-height: 100vh;
+  min-height: -webkit-fill-available; /* For iOS Safari */
   display: flex;
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 20px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
 }
 
 .login-box {
@@ -68,10 +71,12 @@
   position: relative;
   display: flex;
   align-items: center;
+  width: 100%;
 }
 
 .password-input-wrapper input {
-  padding-right: 45px;
+  width: 100%;
+  padding-right: 50px;
 }
 
 .password-toggle {
@@ -85,6 +90,8 @@
   opacity: 0.6;
   transition: opacity 0.2s;
   user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .password-toggle:hover {
@@ -100,9 +107,11 @@
   padding: 12px 16px;
   border: 2px solid #e0e0e0;
   border-radius: 8px;
-  font-size: 15px;
+  font-size: 16px; /* Prevents iOS auto-zoom */
   transition: all 0.3s;
   box-sizing: border-box;
+  -webkit-appearance: none; /* Remove iOS default styling */
+  appearance: none;
 }
 
 [data-theme="dark"] .form-group input {
@@ -149,6 +158,8 @@
   font-weight: 600;
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .login-button:hover:not(:disabled) {
@@ -216,12 +227,14 @@
   .login-container {
     padding: 10px;
     align-items: flex-start;
-    padding-top: 20px;
+    padding-top: 40px; /* More space from top on mobile */
+    justify-content: flex-start; /* Don't center vertically */
   }
   
   .login-box {
     margin: 0;
     max-width: 100%;
+    width: 100%;
   }
   
   .login-header {
@@ -242,15 +255,42 @@
   
   .form-group input {
     font-size: 16px; /* Prevents iOS zoom on input focus */
+    padding: 14px 16px; /* Slightly larger touch target */
+  }
+  
+  .password-input-wrapper input {
+    padding-right: 50px; /* More space for toggle button */
+  }
+  
+  .password-toggle {
+    right: 12px;
+    padding: 10px;
+    font-size: 20px;
+    min-width: 40px;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   
   .login-button {
     font-size: 16px;
     padding: 16px; /* Larger touch target */
+    min-height: 52px; /* Ensure button is easily tappable */
   }
   
   .login-footer {
     padding: 15px 20px;
+  }
+  
+  /* Fix iOS Safari bottom bar issue */
+  body {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+  }
+  
+  html {
+    height: -webkit-fill-available;
   }
 }
 

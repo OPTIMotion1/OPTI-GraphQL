@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import './LoginPage.css';
 
@@ -9,6 +9,18 @@ export function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
+
+  const handleUsernameChange = useCallback((e) => {
+    setUsername(e.target.value);
+  }, []);
+
+  const handlePasswordChange = useCallback((e) => {
+    setPassword(e.target.value);
+  }, []);
+
+  const togglePasswordVisibility = useCallback(() => {
+    setShowPassword(prev => !prev);
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -37,12 +49,12 @@ export function LoginPage() {
             <label htmlFor="username">Username</label>
             <input
               id="username"
+              name="username"
               type="text"
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              onChange={handleUsernameChange}
               placeholder="Enter your username"
-              required
-              autoFocus
+              autoComplete="username"
               disabled={loading}
             />
           </div>
@@ -52,18 +64,20 @@ export function LoginPage() {
             <div className="password-input-wrapper">
               <input
                 id="password"
+                name="password"
                 type={showPassword ? "text" : "password"}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={handlePasswordChange}
                 placeholder="Enter your password"
-                required
+                autoComplete="current-password"
                 disabled={loading}
               />
               <button
                 type="button"
                 className="password-toggle"
-                onClick={() => setShowPassword(!showPassword)}
+                onClick={togglePasswordVisibility}
                 tabIndex="-1"
+                aria-label={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? "👁️" : "👁️‍🗨️"}
               </button>
