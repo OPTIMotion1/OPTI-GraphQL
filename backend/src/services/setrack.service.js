@@ -52,37 +52,48 @@ async function getSeTrackDevices() {
         license_plate: device.name,
         asset_type: 'vehicle',
         status: status,
+        company_name: device.companyName, // NEW: Company identifier
         location: {
           latitude: device.latitude,
           longitude: device.longitude,
           address: address,
           speed: device.speed,
           bearing: device.course,
+          altitude: device.altitude, // NEW: Altitude/elevation
+          accuracy: device.accuracy, // NEW: GPS accuracy
+          valid: device.valid, // NEW: GPS fix validity
           timestamp: device.fixTime
+        },
+        timestamps: { // NEW: All available timestamps
+          fix_time: device.fixTime,           // When GPS fix was obtained
+          device_time: device.deviceTime,     // Device's internal clock
+          server_time: device.serverTime,     // When server received data
+          last_update: device.lastStatusUpdate, // Last status update
+          api_timestamp: device.timestamp     // API response timestamp
         },
         state: {
           ignition: {
             value: device.attributes.ignition,
             label: 'Ignition',
-            observed: true
+            observed: device.attributes.ignition !== null
           },
           battery_level: {
             value: device.attributes.batteryLevel,
             label: 'Battery Level',
             unit: '%',
-            observed: true
+            observed: device.attributes.batteryLevel !== null
           },
           odometer: {
             value: device.attributes.totalDistance,
             label: 'Total Distance',
             unit: 'm',
-            observed: true
+            observed: device.attributes.totalDistance !== null
           },
           trip_distance: {
             value: device.attributes.todayDistance,
             label: 'Today Distance',
             unit: 'm',
-            observed: true
+            observed: device.attributes.todayDistance !== null
           },
           speed: {
             value: device.speed,
@@ -93,12 +104,37 @@ async function getSeTrackDevices() {
           motion: {
             value: device.attributes.motion,
             label: 'Motion',
-            observed: true
+            observed: device.attributes.motion !== null
           },
           charge: {
             value: device.attributes.charge,
             label: 'Charging',
-            observed: true
+            observed: device.attributes.charge !== null
+          },
+          power: { // NEW: Power status
+            value: device.attributes.power,
+            label: 'Power',
+            observed: device.attributes.power !== null
+          },
+          ac_power: { // NEW: AC power
+            value: device.attributes.ac,
+            label: 'AC Power',
+            observed: device.attributes.ac !== null
+          },
+          door: { // NEW: Door sensor
+            value: device.attributes.door,
+            label: 'Door',
+            observed: device.attributes.door !== null
+          },
+          panic_button: { // NEW: Panic/SOS button
+            value: device.attributes.panic,
+            label: 'Panic Button',
+            observed: device.attributes.panic !== null
+          },
+          alarm: { // NEW: Alarm status
+            value: device.attributes.alarm,
+            label: 'Alarm',
+            observed: device.attributes.alarm !== null
           }
         },
         iot_devices: [{
@@ -109,11 +145,15 @@ async function getSeTrackDevices() {
           connection_status: hoursSinceUpdate < 1 ? 'connected' : 'disconnected',
           last_communication: device.lastStatusUpdate,
           is_primary: true,
+          last_latitude: device.latitude,
+          last_longitude: device.longitude,
           location: {
             latitude: device.latitude,
             longitude: device.longitude,
             speed: device.speed,
             bearing: device.course,
+            altitude: device.altitude,
+            accuracy: device.accuracy,
             timestamp: device.fixTime
           },
           state: {}
