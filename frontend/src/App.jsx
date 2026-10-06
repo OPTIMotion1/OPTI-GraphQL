@@ -91,7 +91,7 @@ function useDarkMode() {
   return [dark, setDark];
 }
 
-function useAssets(authenticatedFetch) {
+function useAssets(authenticatedFetch, enabled) {
   const [assets, setAssets]           = useState([]);
   const [counts, setCounts]           = useState(null);
   const [total, setTotal]             = useState(0);
@@ -101,6 +101,8 @@ function useAssets(authenticatedFetch) {
   const [lastFetched, setLastFetched] = useState(null);
 
   const load = useCallback(async () => {
+    if (!enabled) return;
+
     try {
       // Fetch both VoltCred and SeTrack devices in parallel
       const [voltCredRes, seTrackRes] = await Promise.allSettled([
@@ -158,13 +160,15 @@ function useAssets(authenticatedFetch) {
     } finally {
       setLoading(false);
     }
-  }, [authenticatedFetch]);
+  }, [authenticatedFetch, enabled]);
 
   useEffect(() => {
+    if (!enabled) return;
+
     load();
     const t = setInterval(load, 30 * 1000); // Refresh every 30 seconds (faster)
     return () => clearInterval(t);
-  }, [load]);
+  }, [load, enabled]);
 
   return { assets, counts, total, loading, error, permBlocked, lastFetched, reload: load };
 }
@@ -3080,7 +3084,7 @@ export default function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [dark, setDark] = useDarkMode();
 
-  const { assets, counts, total, loading, error, permBlocked, lastFetched, reload } = useAssets(authenticatedFetch);
+  const { assets, counts, total, loading, error, permBlocked, lastFetched, reload } = useAssets(authenticatedFetch, isAuthenticated);
   
   // Build lock state from VoltCred API immobilizer status (not from local commands!)
   const lockState = useMemo(() => {

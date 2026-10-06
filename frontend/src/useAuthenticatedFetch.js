@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { useAuth } from './AuthContext';
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:5001' : '';
@@ -5,7 +6,7 @@ const API_BASE = import.meta.env.DEV ? 'http://localhost:5001' : '';
 export function useAuthenticatedFetch() {
   const { token, logout } = useAuth();
 
-  const authenticatedFetch = async (url, options = {}) => {
+  const authenticatedFetch = useCallback(async (url, options = {}) => {
     if (!token) {
       throw new Error('No authentication token');
     }
@@ -28,7 +29,7 @@ export function useAuthenticatedFetch() {
     }
 
     return response;
-  };
+  }, [token, logout]);
 
   return authenticatedFetch;
 }
