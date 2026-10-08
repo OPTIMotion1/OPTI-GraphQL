@@ -929,7 +929,7 @@ function TrackerTab({ assets, onCommand, commandStatus, lockState }) {
                   </div>
 
                   {/* Quick stats */}
-                  <div style={{ display: 'flex', gap: 12, fontSize: 11 }}>
+                  <div style={{ display: 'flex', gap: 12, fontSize: 11, marginBottom: 8 }}>
                     <div>
                       <span style={{ color: 'var(--text3)' }}>Status: </span>
                       <span style={{
@@ -951,9 +951,35 @@ function TrackerTab({ assets, onCommand, commandStatus, lockState }) {
                     )}
                   </div>
 
-                  {/* Action buttons - show on selected */}
+                  {/* Quick action buttons - ALWAYS visible for VoltCred devices */}
+                  {asset.source !== 'setrack' && device && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onCommand(device.id, asset.id, isLocked ? 'engine_restore' : 'engine_cutoff', device.device_id);
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '6px 8px',
+                        borderRadius: 6,
+                        border: 'none',
+                        background: isLocked ? 'var(--accent)' : '#EF4444',
+                        color: 'white',
+                        fontSize: 11,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'opacity 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+                      onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                    >
+                      {isLocked ? '🔓 Unlock' : '🔒 Lock'}
+                    </button>
+                  )}
+
+                  {/* Detailed action buttons - show on selected */}
                   {isSelected && lat && lng && (
-                    <div style={{ marginTop: 12, display: 'flex', gap: 6 }}>
+                    <div style={{ marginTop: 8, display: 'flex', gap: 6 }}>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -990,24 +1016,8 @@ function TrackerTab({ assets, onCommand, commandStatus, lockState }) {
                       >
                         💬 Share
                       </button>
-                      {asset.source !== 'setrack' && device && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onCommand(device.id, asset.id, isLocked ? 'engine_restore' : 'engine_cutoff', device.device_id);
-                          }}
-                          style={{
-                            flex: 1,
-                            padding: '6px 8px',
-                            borderRadius: 6,
-                            border: 'none',
-                            background: isLocked ? 'var(--accent)' : '#EF4444',
-                            color: 'white',
-                            fontSize: 11,
-                            fontWeight: 500,
-                            cursor: 'pointer'
-                          }}
-                        >
+                    </div>
+                  )}
                           {isLocked ? '🔓 Unlock' : '🔒 Lock'}
                         </button>
                       )}
