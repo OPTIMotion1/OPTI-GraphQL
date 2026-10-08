@@ -1018,11 +1018,6 @@ function TrackerTab({ assets, onCommand, commandStatus, lockState }) {
                       </button>
                     </div>
                   )}
-                          {isLocked ? '🔓 Unlock' : '🔒 Lock'}
-                        </button>
-                      )}
-                    </div>
-                  )}
                 </div>
               );
             })
