@@ -991,8 +991,19 @@ function TrackerTab({ assets, onCommand, commandStatus, lockState }) {
                           borderRadius: 6,
                           border: '1px solid var(--border2)',
                           background: 'var(--bg3)',
+                          color: 'var(--text2)',
                           fontSize: 11,
-                          cursor: 'pointer'
+                          fontWeight: 500,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = 'var(--bg4)';
+                          e.currentTarget.style.color = 'var(--text)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'var(--bg3)';
+                          e.currentTarget.style.color = 'var(--text2)';
                         }}
                       >
                         🗺️ Map
@@ -1010,8 +1021,19 @@ function TrackerTab({ assets, onCommand, commandStatus, lockState }) {
                           borderRadius: 6,
                           border: '1px solid var(--border2)',
                           background: 'var(--bg3)',
+                          color: 'var(--text2)',
                           fontSize: 11,
-                          cursor: 'pointer'
+                          fontWeight: 500,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = 'var(--bg4)';
+                          e.currentTarget.style.color = 'var(--text)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'var(--bg3)';
+                          e.currentTarget.style.color = 'var(--text2)';
                         }}
                       >
                         💬 Share
@@ -3161,11 +3183,16 @@ export default function App() {
       // will show pending status automatically for all users
       console.log(`[Command] ${commandType} sent for ${deviceImei} - will show in command history`);
       
-      // Refresh after 3 seconds to get updated command history from VoltCred API
+      // Update lock state immediately (optimistic update)
+      const newLockState = commandType === 'engine_cutoff' ? 'locked' : 'unlocked';
+      console.log(`[Command] Optimistic update: ${deviceImei} → ${newLockState}`);
+      
+      // Refresh after 5 seconds (reduced shake, gives device time to respond)
+      // The command history will show the pending status
       setTimeout(() => {
         reload();
         setCommandStatus((p) => ({ ...p, [deviceId]: undefined }));
-      }, 3000);
+      }, 5000);
     } catch (err) {
       setCommandStatus((p) => ({ 
         ...p, 
