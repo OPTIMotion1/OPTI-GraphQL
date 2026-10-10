@@ -834,6 +834,7 @@ function TrackerTab({ assets, onCommand, commandStatus, lockState }) {
               borderRadius: 6,
               border: '1px solid var(--border2)',
               background: 'var(--bg1)',
+              color: 'var(--text)',
               fontSize: 13
             }}
           />
@@ -1059,6 +1060,17 @@ function DashboardTab({ assets, counts, onCommand, commandStatus, lockState, per
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
   
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      if (actionMenuOpen !== null) {
+        setActionMenuOpen(null);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [actionMenuOpen]);
+  
   // Apply status filter on top of search
   const filtered = useMemo(() => {
     if (statusFilter === 'all') return searchFiltered;
@@ -1169,23 +1181,24 @@ function DashboardTab({ assets, counts, onCommand, commandStatus, lockState, per
       </div>
 
       {/* Data Table */}
-      <div style={{ overflowX: 'auto', background: 'var(--bg2)', borderRadius: 8, border: '1px solid var(--border2)' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-          <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
-            <tr style={{ background: 'var(--bg3)', borderBottom: '2px solid var(--border2)' }}>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text2)' }}>Device</th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text2)' }}>Latitude</th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text2)' }}>Longitude</th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text2)' }}>Address</th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text2)' }}>Fix Time</th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text2)' }}>Server Time</th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text2)' }}>Speed</th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text2)' }}>Ignition</th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text2)' }}>Blocked</th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text2)' }}>Platform</th>
-              <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 600, color: 'var(--text2)' }}>Actions</th>
-            </tr>
-          </thead>
+      <div style={{ background: 'var(--bg2)', borderRadius: 8, border: '1px solid var(--border2)' }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+              <tr style={{ background: 'var(--bg3)', borderBottom: '2px solid var(--border2)' }}>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text2)' }}>Device</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text2)' }}>Latitude</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text2)' }}>Longitude</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text2)' }}>Address</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text2)' }}>Fix Time</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text2)' }}>Server Time</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text2)' }}>Speed</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text2)' }}>Ignition</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text2)' }}>Blocked</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text2)' }}>Platform</th>
+                <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 600, color: 'var(--text2)' }}>Actions</th>
+              </tr>
+            </thead>
           <tbody>
             {paginatedData.length === 0 ? (
               <tr>
@@ -1253,24 +1266,32 @@ function DashboardTab({ assets, counts, onCommand, commandStatus, lockState, per
                     </td>
                     <td style={{ padding: '12px 16px', textAlign: 'center', position: 'relative' }}>
                       <button 
-                        onClick={() => setActionMenuOpen(actionMenuOpen === asset.id ? null : asset.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActionMenuOpen(actionMenuOpen === asset.id ? null : asset.id);
+                        }}
                         style={{ 
                           padding: '6px 12px', 
-                          background: 'var(--accent)', 
-                          color: 'white', 
+                          background: '#3D7EFF', 
+                          color: '#FFFFFF', 
                           border: 'none', 
                           borderRadius: 6, 
                           cursor: 'pointer',
                           fontSize: 12,
-                          fontWeight: 500
+                          fontWeight: 500,
+                          transition: 'background 0.2s'
                         }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#5B92FF'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = '#3D7EFF'}
                       >
-                        Actions ▾
+                        <span style={{ color: '#FFFFFF' }}>Actions ▾</span>
                       </button>
                       
                       {/* Action Dropdown Menu */}
                       {actionMenuOpen === asset.id && (
-                        <div style={{
+                        <div 
+                          onClick={(e) => e.stopPropagation()}
+                          style={{
                           position: 'absolute',
                           right: 16,
                           top: '100%',
@@ -1424,6 +1445,7 @@ function DashboardTab({ assets, counts, onCommand, commandStatus, lockState, per
             )}
           </tbody>
         </table>
+        </div>
       </div>
       
       {/* Pagination Controls */}

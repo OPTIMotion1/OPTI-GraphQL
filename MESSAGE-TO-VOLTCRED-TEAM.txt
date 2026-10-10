@@ -1,0 +1,17 @@
+Hi VoltCred Team,
+
+We're facing an urgent issue with our account. When we send lock commands to certain vehicles, they immediately go offline and get disconnected, and all commands are failing.
+
+Affected Vehicles & IMEIs:
+• J00025 - 864540080666142
+• J00032 - 864540080667363
+• J00022 - 864540081617334
+• J00028 - 864540081617771
+• J00017 - 864540080376650
+
+Account: hello@optimotion.in
+
+Can you please check this issue from your end and fix it as soon as possible? It's critical for our operations.
+
+Thanks,
+OptiMotion Team
