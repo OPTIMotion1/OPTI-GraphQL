@@ -648,7 +648,6 @@ function TrackerTab({ assets, onCommand, commandStatus, lockState }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [statusFilter, setStatusFilter] = useState("all");
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   // Handle window resize for mobile detection
@@ -707,42 +706,19 @@ function TrackerTab({ assets, onCommand, commandStatus, lockState }) {
       display: 'flex', 
       flexDirection: isMobile ? 'column' : 'row',
       height: 'calc(100vh - 120px)', 
-      gap: sidebarCollapsed ? 0 : (isMobile ? 0 : 16), 
+      gap: isMobile ? 0 : 16, 
       position: 'relative' 
     }}>
       {/* LEFT: Map */}
       <div style={{ 
-        flex: sidebarCollapsed ? 'none' : (isMobile ? '1 1 50%' : '1 1 60%'),
-        width: sidebarCollapsed ? '100%' : (isMobile ? '50%' : '60%'),
+        flex: isMobile ? '1 1 50%' : '1 1 60%',
+        width: isMobile ? '100%' : '60%',
         position: 'relative', 
         borderRadius: 8, 
         overflow: 'hidden', 
         border: '1px solid var(--border2)',
-        transition: 'all 0.3s ease',
         minHeight: isMobile ? '300px' : 'auto'
       }}>
-        {/* Sidebar Toggle Button */}
-        <button
-          onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-          style={{
-            position: 'absolute',
-            top: isMobile ? 70 : 16,
-            right: 16,
-            zIndex: 1000,
-            padding: '8px 12px',
-            background: 'rgba(59, 130, 246, 0.95)',
-            color: 'white',
-            border: '1px solid rgba(59, 130, 246, 1)',
-            borderRadius: 6,
-            cursor: 'pointer',
-            fontSize: 14,
-            fontWeight: 600,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
-          }}
-          title={sidebarCollapsed ? 'Show vehicle list' : 'Hide vehicle list'}
-        >
-          {sidebarCollapsed ? '☰' : '✕'}
-        </button>
         
         <MapContainer 
           center={positions[0] ? [positions[0].location.latitude, positions[0].location.longitude] : DEFAULT_CENTER} 
@@ -777,9 +753,8 @@ function TrackerTab({ assets, onCommand, commandStatus, lockState }) {
         </MapContainer>
       </div>
 
-      {/* RIGHT: Vehicle List */}
-      {!sidebarCollapsed && (
-        <div style={{ 
+      {/* RIGHT: Vehicle List - Always visible */}
+      <div style={{ 
           flex: isMobile ? '1 1 auto' : '1 1 40%',
           display: 'flex', 
           flexDirection: 'column', 
@@ -1049,7 +1024,6 @@ function TrackerTab({ assets, onCommand, commandStatus, lockState }) {
           )}
         </div>
         </div>
-      )}
     </div>
   );
 }
