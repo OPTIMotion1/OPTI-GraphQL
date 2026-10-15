@@ -729,13 +729,14 @@ function TrackerTab({ assets, onCommand, commandStatus, lockState }) {
             right: 16,
             zIndex: 1000,
             padding: '8px 12px',
-            background: 'var(--bg2)',
-            border: '1px solid var(--border2)',
+            background: 'rgba(59, 130, 246, 0.95)',
+            color: 'white',
+            border: '1px solid rgba(59, 130, 246, 1)',
             borderRadius: 6,
             cursor: 'pointer',
             fontSize: 14,
-            fontWeight: 500,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+            fontWeight: 600,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
           }}
           title={sidebarCollapsed ? 'Show vehicle list' : 'Hide vehicle list'}
         >
