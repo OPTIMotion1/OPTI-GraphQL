@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Generate PWA Icons</title>
+</head>
+<body>
+    <h1>PWA Icon Generator</h1>
+    <p>This will generate placeholder icons. Right-click each canvas and "Save image as..."</p>
+    
+    <h2>192x192 Icon</h2>
+    <canvas id="icon192" width="192" height="192"></canvas>
+    
+    <h2>512x512 Icon</h2>
+    <canvas id="icon512" width="512" height="512"></canvas>
+    
+    <h2>Apple Touch Icon (180x180)</h2>
+    <canvas id="apple" width="180" height="180"></canvas>
+
+    <script>
+        function generateIcon(canvasId, size) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            
+            // Background
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(0, 0, size, size);
+            
+            // Outer circle
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = size * 0.05;
+            ctx.beginPath();
+            ctx.arc(size/2, size/2, size * 0.35, 0, 2 * Math.PI);
+            ctx.stroke();
+            
+            // Inner circle
+            ctx.fillStyle = '#60a5fa';
+            ctx.beginPath();
+            ctx.arc(size/2, size/2, size * 0.12, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Cross lines
+            ctx.strokeStyle = '#60a5fa';
+            ctx.lineWidth = size * 0.03;
+            ctx.lineCap = 'round';
+            
+            // Vertical line
+            ctx.beginPath();
+            ctx.moveTo(size/2, size * 0.2);
+            ctx.lineTo(size/2, size * 0.4);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(size/2, size * 0.6);
+            ctx.lineTo(size/2, size * 0.8);
+            ctx.stroke();
+            
+            // Horizontal line
+            ctx.beginPath();
+            ctx.moveTo(size * 0.2, size/2);
+            ctx.lineTo(size * 0.4, size/2);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(size * 0.6, size/2);
+            ctx.lineTo(size * 0.8, size/2);
+            ctx.stroke();
+            
+            // Text
+            ctx.fillStyle = '#60a5fa';
+            ctx.font = `bold ${size * 0.15}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('OPTI', size/2, size * 0.85);
+        }
+        
+        generateIcon('icon192', 192);
+        generateIcon('icon512', 512);
+        generateIcon('apple', 180);
+        
+        console.log('Icons generated! Right-click each canvas and save as:');
+        console.log('- icon192 → save as pwa-192x192.png');
+        console.log('- icon512 → save as pwa-512x512.png');
+        console.log('- apple → save as apple-touch-icon.png');
+    </script>
+</body>
+</html>
