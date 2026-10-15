@@ -707,7 +707,7 @@ function TrackerTab({ assets, onCommand, commandStatus, lockState }) {
       display: 'flex', 
       flexDirection: isMobile ? 'column' : 'row',
       height: 'calc(100vh - 120px)', 
-      gap: isMobile ? 0 : 16, 
+      gap: sidebarCollapsed ? 0 : (isMobile ? 0 : 16), 
       position: 'relative' 
     }}>
       {/* LEFT: Map */}
