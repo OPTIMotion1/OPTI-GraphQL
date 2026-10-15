@@ -1,0 +1,19 @@
+{
+  "name": "OPTI Tracker",
+  "short_name": "OPTI",
+  "description": "Vehicle tracking and management dashboard",
+  "theme_color": "#1e293b",
+  "background_color": "#0f172a",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/",
+  "start_url": "/",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
