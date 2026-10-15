@@ -712,8 +712,8 @@ function TrackerTab({ assets, onCommand, commandStatus, lockState }) {
     }}>
       {/* LEFT: Map */}
       <div style={{ 
-        flex: sidebarCollapsed ? '1 1 100%' : (isMobile ? '1 1 50%' : '1 1 60%'),
-        width: sidebarCollapsed ? '100%' : 'auto',
+        flex: sidebarCollapsed ? 'none' : (isMobile ? '1 1 50%' : '1 1 60%'),
+        width: sidebarCollapsed ? '100%' : (isMobile ? '50%' : '60%'),
         position: 'relative', 
         borderRadius: 8, 
         overflow: 'hidden', 
