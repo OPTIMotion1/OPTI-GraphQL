@@ -32,7 +32,7 @@ export function LoginPage() {
       <div className="login-box">
         <div className="login-header">
           <div className="login-logo">🚗</div>
-          <h1>OPTI Tracker</h1>
+          <h1>Opti Traccar</h1>
           <p>Vehicle Tracking & Management System</p>
         </div>
 

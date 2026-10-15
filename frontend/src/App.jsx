@@ -3286,7 +3286,7 @@ export default function App() {
         <div className="sidebar-header">
           <div className="brand">
             <span className="brand-mark">OT</span>
-            <span className="brand-name">OPTI Tracker</span>
+            <span className="brand-name">Opti Traccar</span>
           </div>
           <button
             className="sidebar-toggle"
