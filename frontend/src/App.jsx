@@ -3133,6 +3133,40 @@ export default function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => window.matchMedia("(max-width: 768px)").matches);
   const [dark, setDark] = useDarkMode();
 
+  // PWA Install Prompt
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [showInstallButton, setShowInstallButton] = useState(false);
+
+  useEffect(() => {
+    const handler = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallButton(true);
+    };
+    
+    window.addEventListener('beforeinstallprompt', handler);
+    
+    // Check if already installed
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setShowInstallButton(false);
+    }
+    
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    
+    if (outcome === 'accepted') {
+      setShowInstallButton(false);
+    }
+    
+    setDeferredPrompt(null);
+  };
+
   useEffect(() => {
     const mobileQuery = window.matchMedia("(max-width: 768px)");
     const syncSidebar = (event) => setSidebarCollapsed(event.matches);
@@ -3283,6 +3317,18 @@ export default function App() {
             ))}
           </ul>
         </nav>
+        
+        {showInstallButton && (
+          <button 
+            className="sidebar-install" 
+            onClick={handleInstallClick} 
+            title="Install App" 
+            aria-label="Install App"
+          >
+            <span aria-hidden="true">📱</span>
+            <span className="sidebar-install-label">Install App</span>
+          </button>
+        )}
         
         <button className="sidebar-logout" onClick={logout} title="Logout" aria-label="Logout">
           <span aria-hidden="true">🚪</span>

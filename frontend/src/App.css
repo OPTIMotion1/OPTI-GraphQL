@@ -398,6 +398,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial
 .sidebar-collapsed .brand-name,
 .sidebar-collapsed .user-details,
 .sidebar-collapsed .nav-label,
+.sidebar-collapsed .sidebar-install-label,
 .sidebar-collapsed .sidebar-logout-label,
 .sidebar-collapsed .sidebar-footer-label {
   display: none;
@@ -417,6 +418,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial
 .sidebar-collapsed .nav-active {
   border-left: 0;
   box-shadow: inset 3px 0 var(--accent);
+}
+
+.sidebar-collapsed .sidebar-install {
+  width: 100%;
+  margin: 12px 0 0 0;
+  padding: 10px 0;
 }
 
 .sidebar-collapsed .sidebar-logout {
@@ -479,6 +486,29 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial
   margin-top: 2px;
 }
 
+.sidebar-install {
+  margin: 12px 14px 0 14px;
+  padding: 12px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  width: calc(100% - 28px);
+  transition: background 0.15s;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.sidebar-install:hover { 
+  background: #2563eb; 
+}
+
 .sidebar-logout {
   margin: 12px 14px;
   padding: 12px;
@@ -538,6 +568,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial
   .sidebar-collapsed .brand-name,
   .sidebar-collapsed .user-details,
   .sidebar-collapsed .nav-label,
+  .sidebar-collapsed .sidebar-install-label,
   .sidebar-collapsed .sidebar-logout-label,
   .sidebar-collapsed .sidebar-footer-label {
     display: none;
@@ -576,6 +607,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial
   .sidebar-collapsed .nav-active {
     border-left: 0;
     box-shadow: inset 3px 0 var(--accent);
+  }
+
+  .sidebar-install,
+  .sidebar-collapsed .sidebar-install {
+    width: 100%;
+    margin: 12px 0 0 0;
+    padding: 12px 0;
   }
 
   .sidebar-logout,
