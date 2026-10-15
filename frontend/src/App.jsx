@@ -3135,7 +3135,7 @@ export default function App() {
 
   // PWA Install Prompt
   const [deferredPrompt, setDeferredPrompt] = useState(null);
-  const [showInstallButton, setShowInstallButton] = useState(false);
+  const [showInstallButton, setShowInstallButton] = useState(true); // Always show for now
 
   useEffect(() => {
     const handler = (e) => {
@@ -3148,17 +3148,27 @@ export default function App() {
     
     // Check if already installed
     if (window.matchMedia('(display-mode: standalone)').matches) {
+      console.log('[PWA] App is already installed');
       setShowInstallButton(false);
+    } else {
+      console.log('[PWA] App is not installed, showing install button');
     }
     
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
   const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
+    console.log('[PWA] Install button clicked', { deferredPrompt });
+    
+    if (!deferredPrompt) {
+      alert('Install prompt not available yet. This could mean:\n\n1. App is already installed\n2. Browser doesn\'t support PWA install\n3. Not running on HTTPS\n4. Service worker not ready yet\n\nTry:\n- Opening in Chrome/Edge on mobile\n- Checking if HTTPS is enabled\n- Waiting a few seconds after page load');
+      return;
+    }
     
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
+    
+    console.log('[PWA] User choice:', outcome);
     
     if (outcome === 'accepted') {
       setShowInstallButton(false);
