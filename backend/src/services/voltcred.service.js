@@ -29,10 +29,13 @@ async function login() {
       email: process.env.VOLTCRED_EMAIL,
       password: process.env.VOLTCRED_PASSWORD,
     }},
-    { headers: {
-      "Content-Type": "application/json",
-      "Cookie": "device=web",
-    }}
+    { 
+      headers: {
+        "Content-Type": "application/json",
+        "Cookie": "device=web",
+      },
+      timeout: 30000 // 30 second timeout
+    }
   );
 
   const result = response.data?.data?.sessionCreateV2;
@@ -50,16 +53,24 @@ async function login() {
 // Sends Cookie: authorization=<jwt>; device=web on every post-login request.
 // Auto re-logs-in once if the token expires (GraphQL-level unauthorized or HTTP 401).
 
-async function graphqlRequest(query, variables = {}) {
-  if (!authToken) await login();
+async function graphqlRequest(query, variables = {}, retryCount = 0) {
+  const MAX_RETRIES = 2;
+  
+  if (!authToken) {
+    console.log("No token found, logging in...");
+    await login();
+  }
 
   const makeRequest = () => axios.post(
     GRAPHQL_URL,
     { query, variables },
-    { headers: {
-      "Content-Type": "application/json",
-      "Cookie": `authorization=${authToken}; device=web`,
-    }}
+    { 
+      headers: {
+        "Content-Type": "application/json",
+        "Cookie": `authorization=${authToken}; device=web`,
+      },
+      timeout: 60000 // 60 second timeout for queries
+    }
   );
 
   try {
@@ -75,16 +86,19 @@ async function graphqlRequest(query, variables = {}) {
         console.error("Error Details:", JSON.stringify(extensions, null, 2));
       }
       
-      if (msg === "unauthorized") {
-        console.log("Token expired, re-logging in...");
-        await login();
-        const retry = await makeRequest();
-        if (retry.data?.errors?.length) {
-          console.error("Retry failed:", retry.data.errors[0]);
-          throw new Error(retry.data.errors[0].message);
+      // Handle unauthorized errors - token expired
+      if (msg === "unauthorized" || msg?.toLowerCase().includes("unauthorized")) {
+        if (retryCount < MAX_RETRIES) {
+          console.log(`Token expired (retry ${retryCount + 1}/${MAX_RETRIES}), re-logging in...`);
+          authToken = null; // Clear expired token
+          await login();
+          return graphqlRequest(query, variables, retryCount + 1);
+        } else {
+          console.error("Max retries reached for unauthorized error");
+          throw new Error("Authentication failed after multiple retries");
         }
-        return retry.data?.data;
       }
+      
       throw new Error(msg || "GraphQL error");
     }
 
@@ -94,14 +108,27 @@ async function graphqlRequest(query, variables = {}) {
     if (error.response) {
       console.error("HTTP Error:", error.response.status, error.response.statusText);
       console.error("Response Data:", JSON.stringify(error.response.data, null, 2));
+      
+      // Handle 401 Unauthorized at HTTP level
+      if (error.response.status === 401) {
+        if (retryCount < MAX_RETRIES) {
+          console.log(`401 Unauthorized (retry ${retryCount + 1}/${MAX_RETRIES}), re-logging in...`);
+          authToken = null; // Clear expired token
+          await login();
+          return graphqlRequest(query, variables, retryCount + 1);
+        } else {
+          console.error("Max retries reached for 401 error");
+          throw new Error("Authentication failed after multiple retries");
+        }
+      }
     }
     
-    if (error.response?.status === 401) {
-      console.log("401 Unauthorized, re-logging in...");
-      await login();
-      const retry = await makeRequest();
-      return retry.data?.data;
+    // Network errors, timeouts, etc.
+    if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
+      console.error("Network timeout or connection aborted");
+      throw new Error("VoltCred API timeout - please try again");
     }
+    
     throw error;
   }
 }
