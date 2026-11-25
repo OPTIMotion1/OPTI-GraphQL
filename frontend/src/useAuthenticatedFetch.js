@@ -11,15 +11,24 @@ export function useAuthenticatedFetch() {
       throw new Error('No authentication token');
     }
 
+    // Add cache-busting query parameter to prevent browser caching
+    const cacheBuster = `_t=${Date.now()}`;
+    const separator = url.includes('?') ? '&' : '?';
+    const urlWithCacheBuster = `${url}${separator}${cacheBuster}`;
+
     const headers = {
       'Content-Type': 'application/json',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
       ...options.headers,
       'Authorization': `Bearer ${token}`,
     };
 
-    const response = await fetch(`${API_BASE}${url}`, {
+    const response = await fetch(`${API_BASE}${urlWithCacheBuster}`, {
       ...options,
       headers,
+      cache: 'no-store', // Prevent browser caching
     });
 
     // If unauthorized, logout user
