@@ -1,11 +1,28 @@
 const axios = require("axios");
 
-
-
 const GRAPHQL_URL = process.env.VOLTCRED_GRAPHQL_URL
   || "https://api-stage.voltcred.com/v2/graphql";
 
 let authToken = null;
+let tokenExpiry = null;
+
+// Token validity check - refresh if expired or about to expire
+function isTokenValid() {
+  if (!authToken) return false;
+  if (!tokenExpiry) return true; // If no expiry set, assume valid (will be set on first request)
+  
+  // Refresh token 5 minutes before expiry
+  const now = Date.now();
+  const timeUntilExpiry = tokenExpiry - now;
+  const fiveMinutes = 5 * 60 * 1000;
+  
+  if (timeUntilExpiry < fiveMinutes) {
+    console.log(`Token expiring in ${Math.floor(timeUntilExpiry / 1000)}s, refreshing...`);
+    return false;
+  }
+  
+  return true;
+}
 
 // ── Login ─────────────────────────────────────────────────────────────────────
 // The Heimdallr gateway REQUIRES Cookie: device=web even on the login call.
@@ -45,7 +62,12 @@ async function login() {
   }
 
   authToken = result.token;
-  console.log("VoltCred GraphQL login successful");
+  
+  // VoltCred tokens typically expire in 24 hours
+  // Set expiry to 23 hours from now to be safe
+  tokenExpiry = Date.now() + (23 * 60 * 60 * 1000);
+  
+  console.log("VoltCred GraphQL login successful, token expires in ~23 hours");
   return authToken;
 }
 
@@ -56,8 +78,11 @@ async function login() {
 async function graphqlRequest(query, variables = {}, retryCount = 0) {
   const MAX_RETRIES = 2;
   
-  if (!authToken) {
-    console.log("No token found, logging in...");
+  // Check if token is valid before making request
+  if (!isTokenValid()) {
+    console.log("Token invalid or expired, re-logging in...");
+    authToken = null;
+    tokenExpiry = null;
     await login();
   }
 
@@ -91,6 +116,7 @@ async function graphqlRequest(query, variables = {}, retryCount = 0) {
         if (retryCount < MAX_RETRIES) {
           console.log(`Token expired (retry ${retryCount + 1}/${MAX_RETRIES}), re-logging in...`);
           authToken = null; // Clear expired token
+          tokenExpiry = null; // Clear expiry
           await login();
           return graphqlRequest(query, variables, retryCount + 1);
         } else {
@@ -114,6 +140,7 @@ async function graphqlRequest(query, variables = {}, retryCount = 0) {
         if (retryCount < MAX_RETRIES) {
           console.log(`401 Unauthorized (retry ${retryCount + 1}/${MAX_RETRIES}), re-logging in...`);
           authToken = null; // Clear expired token
+          tokenExpiry = null; // Clear expiry
           await login();
           return graphqlRequest(query, variables, retryCount + 1);
         } else {
