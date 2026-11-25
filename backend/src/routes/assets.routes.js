@@ -93,7 +93,9 @@ router.get("/", async (req, res) => {
     console.log(`[Assets] ✓ Command history fetched for all devices`);
     
     // FINALLY: Enrich with addresses from reverse geocoding (for assets without address)
-    // Do this asynchronously without blocking the response
+    // DISABLED: Nominatim rate limiting causing too many errors
+    // TODO: Consider using a paid geocoding service or caching more aggressively
+    /*
     console.log(`[Assets] Starting background address enrichment for ${enrichedAssets.length} vehicles...`);
     
     // Don't wait for geocoding - return immediately and geocode in background
@@ -102,7 +104,7 @@ router.get("/", async (req, res) => {
         if (asset.location?.latitude && asset.location?.longitude && !asset.location?.address) {
           try {
             // Add delay based on index to respect rate limits
-            await new Promise(resolve => setTimeout(resolve, index * 1100));
+            await new Promise(resolve => setTimeout(resolve, index * 2000)); // Increased to 2 seconds
             const address = await reverseGeocode(asset.location.latitude, asset.location.longitude);
             if (address) {
               asset.location.address = address;
@@ -116,8 +118,10 @@ router.get("/", async (req, res) => {
     ).catch(err => {
       console.error('[Assets] Background geocoding error:', err.message);
     });
+    */
     
-    console.log(`[Assets] ✓ Returning ${enrichedAssets.length} assets (addresses will be enriched in background)`)
+    console.log(`[Assets] ✓ Returning ${enrichedAssets.length} assets`)
+
     
     // Return success with counts and total
     res.json({ 
