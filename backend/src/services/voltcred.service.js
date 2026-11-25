@@ -111,16 +111,21 @@ async function graphqlRequest(query, variables = {}, retryCount = 0) {
         console.error("Error Details:", JSON.stringify(extensions, null, 2));
       }
       
-      // Handle unauthorized errors - token expired
-      if (msg === "unauthorized" || msg?.toLowerCase().includes("unauthorized")) {
+      // Handle unauthorized errors - token expired OR Bifrost session expired
+      if (msg === "unauthorized" || 
+          msg?.toLowerCase().includes("unauthorized") ||
+          msg?.includes("Authentication required") ||
+          msg?.includes("missing external_id") ||
+          msg?.includes("Bifrost")) {
         if (retryCount < MAX_RETRIES) {
-          console.log(`Token expired (retry ${retryCount + 1}/${MAX_RETRIES}), re-logging in...`);
+          console.log(`Auth error detected (retry ${retryCount + 1}/${MAX_RETRIES}): ${msg}`);
+          console.log("Clearing token and re-authenticating...");
           authToken = null; // Clear expired token
           tokenExpiry = null; // Clear expiry
-          await login();
+          await login(); // Full re-login
           return graphqlRequest(query, variables, retryCount + 1);
         } else {
-          console.error("Max retries reached for unauthorized error");
+          console.error("Max retries reached for auth error");
           throw new Error("Authentication failed after multiple retries");
         }
       }
